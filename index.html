@@ -8,6 +8,8 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<input id="hiddenUN" type="text" autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="32" style="position:fixed;opacity:0;pointer-events:none;top:50%;left:50%;width:1px;height:1px;font-size:16px;">
+<input id="hiddenPW" type="password" autocomplete="current-password" maxlength="32" style="position:fixed;opacity:0;pointer-events:none;top:50%;left:50%;width:1px;height:1px;font-size:16px;">
 <script>
 let SCREEN_WIDTH=window.innerWidth,SCREEN_HEIGHT=window.innerHeight,SCREEN_WM=SCREEN_WIDTH/2,SCREEN_HM=SCREEN_HEIGHT/2;
 const TILE_GRID_WIDTH=100,TILE_GRID_HEIGHT=100,TILE_SIZE=52;
@@ -428,8 +430,8 @@ const LEVEL_4=[
 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0]
 ];
 
-const LEVEL_START_X=[3300,-1200,-1200,-560];
-const LEVEL_START_Y=[4100,-500,4100,4310];
+const LEVEL_START_X=[3300,-1200,-1200,-1236];
+const LEVEL_START_Y=[4100,-500,4100,3998];
 const LEVEL_BACKGROUND=[1,1,2,2];
 const LEVEL_MAPS=[LEVEL_1,LEVEL_2,LEVEL_3,LEVEL_4];
 
@@ -1505,10 +1507,29 @@ async function dbSignIn(username,password){
     }catch(e){authLoading=false;authError='Error: '+e.message;}
 }
 
+const hiddenUN=document.getElementById('hiddenUN');
+const hiddenPW=document.getElementById('hiddenPW');
+function setActiveInput(field){
+    activeInput=field;
+    if(field===null){hiddenUN.blur();hiddenPW.blur();return;}
+    const el=field==='username'?hiddenUN:hiddenPW;
+    el.value=inputValues[field];
+    el.focus();
+}
+hiddenUN.addEventListener('input',()=>{inputValues.username=hiddenUN.value.slice(0,32);});
+hiddenPW.addEventListener('input',()=>{inputValues.password=hiddenPW.value.slice(0,32);});
+hiddenUN.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){authSubmitPending=true;e.preventDefault();}
+    if(e.key==='Tab'){e.preventDefault();setActiveInput('password');}
+});
+hiddenPW.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){authSubmitPending=true;e.preventDefault();}
+    if(e.key==='Tab'){e.preventDefault();setActiveInput('username');}
+});
 document.addEventListener('keydown',e=>{
     if(activeInput!==null){
         if(e.key==='Backspace'){inputValues[activeInput]=inputValues[activeInput].slice(0,-1);}
-        else if(e.key==='Tab'){e.preventDefault();activeInput=activeInput==='username'?'password':'username';}
+        else if(e.key==='Tab'){e.preventDefault();setActiveInput(activeInput==='username'?'password':'username');}
         else if(e.key==='Enter'){authSubmitPending=true;}
         else if(e.key.length===1&&inputValues[activeInput].length<32){inputValues[activeInput]+=e.key;}
         return;
@@ -1632,6 +1653,21 @@ Promise.all([
     }
     bwBtnCtx.putImageData(bwd,0,0);
     const bwBtnSheet=bwBtnCanvas;
+
+    // Build white-to-red version of button sheet for delete account button
+    const redBtnCanvas=document.createElement('canvas');
+    redBtnCanvas.width=btnSheet.naturalWidth||btnSheet.width;
+    redBtnCanvas.height=btnSheet.naturalHeight||btnSheet.height;
+    const redBtnCtx=redBtnCanvas.getContext('2d');
+    redBtnCtx.drawImage(btnSheet,0,0);
+    const rbd=redBtnCtx.getImageData(0,0,redBtnCanvas.width,redBtnCanvas.height);
+    for(let i=0;i<rbd.data.length;i+=4){
+        if(rbd.data[i]>200&&rbd.data[i+1]>200&&rbd.data[i+2]>200){
+            rbd.data[i]=210;rbd.data[i+1]=30;rbd.data[i+2]=30;
+        }
+    }
+    redBtnCtx.putImageData(rbd,0,0);
+    const redBtnSheet=redBtnCanvas;
 
     // Build yellow-tinted version of cdSheet (red pixels → yellow) for immunity state display
     const cdImmuneCanvas=document.createElement('canvas');
@@ -1762,10 +1798,10 @@ Promise.all([
 
             if(mjp){
                 if(inRect(mouseX,mouseY,loginBtnX,loginBtnY,loginBtnW,loginBtnH)){
-                    inputValues.username='';inputValues.password='';authError='';activeInput='username';page='LOGIN';
+                    inputValues.username='';inputValues.password='';authError='';page='LOGIN';setActiveInput('username');
                 }
                 if(inRect(mouseX,mouseY,createBtnX,createBtnY,createBtnW,createBtnH)){
-                    inputValues.username='';inputValues.password='';authError='';activeInput='username';page='CREATE';
+                    inputValues.username='';inputValues.password='';authError='';page='CREATE';setActiveInput('username');
                 }
             }
 
@@ -1805,17 +1841,17 @@ Promise.all([
             if(mjp){
                 const clickedToggle=inRect(mouseX,mouseY,togX-togPad,togY-togPad,togW+togPad*2,togH+togPad*2);
                 if(clickedToggle){ showPassword=!showPassword; }
-                else if(inRect(mouseX,mouseY,formX,unY,fieldW,fieldH)) activeInput='username';
-                else if(inRect(mouseX,mouseY,formX,pwY,fieldW,fieldH)) activeInput='password';
-                else if(!inRect(mouseX,mouseY,submitX,submitY,submitW,submitH)&&!inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)) activeInput=null;
+                else if(inRect(mouseX,mouseY,formX,unY,fieldW,fieldH)) setActiveInput('username');
+                else if(inRect(mouseX,mouseY,formX,pwY,fieldW,fieldH)) setActiveInput('password');
+                else if(!inRect(mouseX,mouseY,submitX,submitY,submitW,submitH)&&!inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)) setActiveInput(null);
                 if(inRect(mouseX,mouseY,submitX,submitY,submitW,submitH)) authSubmitPending=true;
-                if(inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)){activeInput=null;showPassword=false;page='MENU';}
+                if(inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)){setActiveInput(null);showPassword=false;page='MENU';}
             }}
 
             // Submit
             const asp=authSubmitPending; authSubmitPending=false;
             if(asp&&!authLoading&&inputValues.username&&inputValues.password){
-                activeInput=null;
+                setActiveInput(null);
                 if(isCreate) dbSignUp(inputValues.username,inputValues.password);
                 else         dbSignIn(inputValues.username,inputValues.password);
             }
@@ -1934,9 +1970,9 @@ Promise.all([
             if(mjp&&inRect(mouseX,mouseY,shopBb.bx,shopBb.by,shopBb.bw,shopBb.bh)) page='LEVELS';
 
             const pW=820,pH=735,pX=Math.floor(SCREEN_WM-pW/2),pY=Math.floor(SCREEN_HM-pH/2);
-            const pickerY=pY+460,btnSz=70;
-            const minBtn={x:SCREEN_WM-190,y:pickerY,w:btnSz,h:btnSz};
-            const pluBtn={x:SCREEN_WM+120,y:pickerY,w:btnSz,h:btnSz};
+            const pickerY=pY+460,btnSz=LEVEL_BUTTON_SIZE;
+            const minBtn={x:SCREEN_WM-250,y:pickerY,w:btnSz,h:btnSz};
+            const pluBtn={x:SCREEN_WM+150,y:pickerY,w:btnSz,h:btnSz};
             if(mjp&&shopConvertAmount>1&&inRect(mouseX,mouseY,minBtn.x,minBtn.y,minBtn.w,minBtn.h)) shopConvertAmount--;
             if(mjp&&shopConvertAmount<maxConv&&maxConv>0&&inRect(mouseX,mouseY,pluBtn.x,pluBtn.y,pluBtn.w,pluBtn.h)) shopConvertAmount++;
 
@@ -1995,37 +2031,33 @@ Promise.all([
 
             // Minus button
             const minActive=shopConvertAmount>1&&maxConv>0;
-            ctx.save();ctx.globalAlpha=minActive?220/255:80/255;
-            ctx.fillStyle=minActive?'rgb(180,50,50)':'rgb(60,60,60)';
-            ctx.beginPath();ctx.roundRect(minBtn.x,minBtn.y,minBtn.w,minBtn.h,6);ctx.fill();ctx.restore();
-            ctx.fillStyle=`rgba(255,255,255,${minActive?1:0.35})`;
-            ctx.fillRect(minBtn.x+17,minBtn.y+33,36,4);
+            renderButton(ctx,minActive?bwBtnSheet:greySheet,textSheet,2,minBtn.x,minBtn.y,minBtn.w,minBtn.h,'');
+            ctx.fillStyle=minActive?'black':'rgba(0,0,0,0.35)';
+            ctx.fillRect(minBtn.x+18,minBtn.y+47,64,6);
 
             // Amount box
             const amtStr=maxConv===0?'0':String(shopConvertAmount);
             const amtStrW=amtStr.length*(4*3*2+3);
             ctx.save();ctx.globalAlpha=150/255;ctx.fillStyle='rgb(40,40,60)';
-            ctx.beginPath();ctx.roundRect(SCREEN_WM-100,pickerY,200,btnSz,6);ctx.fill();ctx.restore();
-            renderText(ctx,textSheet,amtStr,Math.floor(SCREEN_WM-amtStrW/2),pickerY+14,2,0,0,0);
+            ctx.beginPath();ctx.roundRect(SCREEN_WM-140,pickerY,280,btnSz,6);ctx.fill();ctx.restore();
+            renderText(ctx,textSheet,amtStr,Math.floor(SCREEN_WM-amtStrW/2),pickerY+32,2,0,0,0);
 
             // Plus button
             const pluActive=shopConvertAmount<maxConv&&maxConv>0;
-            ctx.save();ctx.globalAlpha=pluActive?220/255:80/255;
-            ctx.fillStyle=pluActive?'rgb(50,160,50)':'rgb(60,60,60)';
-            ctx.beginPath();ctx.roundRect(pluBtn.x,pluBtn.y,pluBtn.w,pluBtn.h,6);ctx.fill();ctx.restore();
-            ctx.fillStyle=`rgba(255,255,255,${pluActive?1:0.35})`;
-            ctx.fillRect(pluBtn.x+17,pluBtn.y+33,36,4);
-            ctx.fillRect(pluBtn.x+33,pluBtn.y+17,4,36);
+            renderButton(ctx,pluActive?bwBtnSheet:greySheet,textSheet,2,pluBtn.x,pluBtn.y,pluBtn.w,pluBtn.h,'');
+            ctx.fillStyle=pluActive?'black':'rgba(0,0,0,0.35)';
+            ctx.fillRect(pluBtn.x+18,pluBtn.y+47,64,6);
+            ctx.fillRect(pluBtn.x+47,pluBtn.y+18,6,64);
 
             // Cost / gain text
             if(maxConv>0){
                 const cgStr='COST: '+(shopConvertAmount*5)+'   GAIN: '+shopConvertAmount+' TP';
                 const cgW=cgStr.length*(4*3*1+3);
-                renderText(ctx,textSheet,cgStr,Math.floor(SCREEN_WM-cgW/2),pY+550,1,0,0,0);
+                renderText(ctx,textSheet,cgStr,Math.floor(SCREEN_WM-cgW/2),pY+580,1,0,0,0);
             } else {
                 const cgStr='NOT ENOUGH DRIFT COINS';
                 const cgW=cgStr.length*(4*3*1+3);
-                renderText(ctx,textSheet,cgStr,Math.floor(SCREEN_WM-cgW/2),pY+550,1,200,0,0);
+                renderText(ctx,textSheet,cgStr,Math.floor(SCREEN_WM-cgW/2),pY+580,1,200,0,0);
             }
 
             // Convert button
@@ -2107,8 +2139,8 @@ Promise.all([
             renderTextButton(ctx,btnSheet,textSheet,16,loX,loY,loW,'LOG OUT',0,0,0);
 
             // Delete account button
-            const delW=400,delH=80,delX=Math.floor(SCREEN_WM-delW/2),delY=loY+100;
-            renderTextButton(ctx,bwBtnSheet,textSheet,16,delX,delY,delW,'DELETE ACCOUNT',0,0,0);
+            const delW=440,delH=80,delX=Math.floor(SCREEN_WM-delW/2),delY=loY+100;
+            renderTextButton(ctx,redBtnSheet,textSheet,16,delX,delY,delW,'DELETE ACCOUNT',0,0,0);
 
             // Confirmation warning
             if(deleteConfirm){
