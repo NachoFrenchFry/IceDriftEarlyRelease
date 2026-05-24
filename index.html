@@ -2484,6 +2484,14 @@ Promise.all([
                     finish=false;
                 }
             }
+            // Debug hint
+            if(!showHitboxes){
+                const hint='Hold Option or Alt to Show Debug Info';
+                const hw=hint.length*(4*3+3);
+                ctx.save();ctx.globalAlpha=200/255;
+                renderText(ctx,textSheet,hint,SCREEN_WIDTH-hw-12,SCREEN_HEIGHT-7*3-12,1,255,255,255);
+                ctx.restore();
+            }
             if(performance.now()<speedTileEnd){
                 const grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,Math.min(SCREEN_WIDTH,SCREEN_HEIGHT)*0.15,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.75);
                 grd.addColorStop(0,'rgba(0,255,80,0)');
