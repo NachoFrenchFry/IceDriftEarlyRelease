@@ -454,6 +454,7 @@ let deleteConfirm=false;
 let activeInput=null; // 'username'|'password'
 const inputValues={username:'',password:''};
 let showPassword=false;
+let authFieldRects={un:null,pw:null};
 let mouseX,mouseY;
 let finish=false,finishTime=0,finishTick=0;
 let gameStartTime=performance.now();
@@ -1418,7 +1419,20 @@ canvas.addEventListener('mouseup',e=>{
     if(e.button===2) rightMouseDown=false;
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('touchstart',()=>{mouseJustPressed=true;mouseDown=true;},{passive:false});
+canvas.addEventListener('touchstart',e=>{
+    mouseJustPressed=true;mouseDown=true;
+    // Focus hidden input immediately (must be synchronous for iOS keyboard)
+    if((page==='LOGIN'||page==='CREATE')&&e.touches[0]){
+        const r=canvas.getBoundingClientRect();
+        const tx=e.touches[0].clientX-r.left,ty=e.touches[0].clientY-r.top;
+        const ir=authFieldRects;
+        if(ir.un&&tx>=ir.un.x&&tx<=ir.un.x+ir.un.w&&ty>=ir.un.y&&ty<=ir.un.y+ir.un.h){
+            hiddenUN.value=inputValues.username;hiddenUN.focus();activeInput='username';
+        } else if(ir.pw&&tx>=ir.pw.x&&tx<=ir.pw.x+ir.pw.w&&ty>=ir.pw.y&&ty<=ir.pw.y+ir.pw.h){
+            hiddenPW.value=inputValues.password;hiddenPW.focus();activeInput='password';
+        }
+    }
+},{passive:false});
 canvas.addEventListener('touchend',()=>{mouseDown=false;mouseJustReleased=true;});
 // ── Supabase ──────────────────────────────────────────────────────────────────
 const db=supabase.createClient(
@@ -1582,7 +1596,7 @@ Promise.all([
         ctx.restore();
         // Label
         const labelW=label.length*(4*3+3);
-        renderText(ctx,textSheet,label,x,y-22,1,180,180,200);
+        renderText(ctx,textSheet,label,x,y-28,1,0,0,0);
         // Value text
         const display=isPassword&&!showPassword?'o'.repeat(inputValues[fieldKey].length):inputValues[fieldKey];
         const cursor=(focused&&Math.floor(performance.now()/500)%2===0)?'|':'';
@@ -1827,6 +1841,7 @@ Promise.all([
             const formW=500,formX=Math.floor(SCREEN_WM-formW/2);
             const fieldW=formW,fieldH=54;
             const unY=Math.floor(SCREEN_HM-100),pwY=unY+100;
+            authFieldRects={un:{x:formX,y:unY,w:fieldW,h:fieldH},pw:{x:formX,y:pwY,w:fieldW,h:fieldH}};
             const submitW=240,submitH=80,submitX=Math.floor(SCREEN_WM-submitW/2),submitY=pwY+80;
             const backW=160,backH=50,backX=Math.floor(SCREEN_WM-backW/2),backY=submitY+90;
 
@@ -1861,7 +1876,7 @@ Promise.all([
 
             // Title
             const ttl=isCreate?'CREATE ACCOUNT':'LOGIN',ttlW=ttl.length*(4*3*2+3);
-            renderText(ctx,textSheet,ttl,Math.floor(SCREEN_WM-ttlW/2),Math.floor(SCREEN_HM-200),2,220,220,255);
+            renderText(ctx,textSheet,ttl,Math.floor(SCREEN_WM-ttlW/2),Math.floor(SCREEN_HM-200),2,0,0,0);
 
             // Input fields
             renderInputField('USERNAME','username',formX,unY,fieldW,fieldH,false);
