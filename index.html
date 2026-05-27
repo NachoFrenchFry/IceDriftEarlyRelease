@@ -2858,7 +2858,7 @@ Promise.all([
             {const now=performance.now();
             if(currentUser&&now-lastLobbyBroadcast>50){
                 lastLobbyBroadcast=now;
-                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos,y:player.yPos,dir:player.drawDir,username:currentUsername}});
+                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername}});
             }}
 
             // Remove stale other players
@@ -2914,8 +2914,8 @@ Promise.all([
             // Other players
             {const sOff=5,pivY=10,visW=CAR_WIDTH,visH=CAR_HEIGHT;
             for(const[uid,op]of Object.entries(otherPlayers)){
-                const sx=SCREEN_WM+(op.x-player.xPos);
-                const sy=SCREEN_HM+(op.y-player.yPos);
+                const sx=op.x-player.xPos;
+                const sy=op.y-player.yPos;
                 const dir=(op.dir||270)*Math.PI/180;
                 // Shadow
                 ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';
