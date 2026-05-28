@@ -1113,7 +1113,7 @@ class Car {
             if(t.active&&t.type==="END"&&!finish){
                 finish=true; finishTick=performance.now();
                 finishTime=(finishTick-gameStartTime-3000)/1000;
-                const dcRewards=[10000,5,10,100];
+                const dcRewards=[100000,5,10,100];
                 driftCoins+=dcRewards[currentLevel]||0;
                 dbSaveProfile();
                 dbSaveTime(currentLevel,finishTime);
