@@ -1137,7 +1137,7 @@ class Car {
                 finish=true; finishTick=performance.now();
                 finishTime=(finishTick-gameStartTime-3000)/1000;
                 if(!antiCheatFlagged){
-                const dcRewards=[1,5,10,100];
+                const dcRewards=[20000,5,10,100];
                 driftCoins+=dcRewards[currentLevel]||0;
                 dbSaveProfile();
                 dbSaveTime(currentLevel,finishTime);
