@@ -546,8 +546,8 @@ let rightMouseDown=false,rightMouseJustPressed=false;
 let shiftJustPressed=false,shiftWasDown=false;
 let showHitboxes=false;
 // Auth state
-const DEVELOPERS=['nachofrenchfry'];
-const ADMINS=['cookery','19k','TheCurseKing'];
+const DEVELOPERS=['nachofrenchfry', 'cookery'];
+const ADMINS=['19k','TheCurseKing'];
 function isDeveloper(u){return DEVELOPERS.includes((u||'').toLowerCase());}
 function isAdmin(u){return ADMINS.includes((u||'').toLowerCase());}
 function isPrivileged(u){return isDeveloper(u)||isAdmin(u);}
