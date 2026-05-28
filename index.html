@@ -550,7 +550,7 @@ function getMobBoostRect(){return{x:SCREEN_WIDTH-150,y:SCREEN_HEIGHT-150,w:120,h
 let showHitboxes=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
-const ADMINS=['cookery','19k','TheCurseKing'];
+const ADMINS=['cookery','19k','TheCurseKing','AntAnthonyYT'];
 function isDeveloper(u){return DEVELOPERS.includes((u||'').toLowerCase());}
 function isAdmin(u){return ADMINS.includes((u||'').toLowerCase());}
 function isPrivileged(u){return isDeveloper(u)||isAdmin(u);}
@@ -588,7 +588,7 @@ const BRANCH_COSTS=[
     [1, 1, 2, 4, 0, 0, 0, 0],  // 6: Tactical Sight
     [1, 2, 3, 6,12,20,35,55],  // 7: Turbo Brake
     [8,20, 0, 0, 0, 0, 0, 0],  // 8: Second Chance
-    [5000,0, 0, 0, 0, 0, 0, 0], // 9: Hold Boost
+    [1500,0, 0, 0, 0, 0, 0, 0], // 9: Hold Boost
 ];
 const BRANCH_LEVELS=[8,8,8,8,5,8,4,8,2,1];
 let totalTalentPoints=0,spentTalentPoints=0;
