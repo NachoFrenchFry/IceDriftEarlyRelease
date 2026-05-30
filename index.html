@@ -1276,7 +1276,7 @@ class Car {
                 finish=true; finishTick=performance.now();
                 finishTime=(finishTick-gameStartTime-3000)/1000;
                 if(!antiCheatFlagged){
-                const dcRewards=[1,5,10,20];
+                const dcRewards=[1,5,10,20,50];
                 driftCoins+=dcRewards[currentLevel]||0;
                 dbSaveProfile();
                 dbSaveTime(currentLevel,finishTime);
@@ -1897,7 +1897,7 @@ async function dbSaveTime(level,time){
     await db.from('times').upsert({user_id:currentUser.id,username:currentUsername,level,time},{onConflict:'user_id,level'});
 }
 async function dbLoadRecords(){
-    for(let i=0;i<4;i++){
+    for(let i=0;i<LEVEL_COUNT;i++){
         const{data}=await db.from('times').select('username,time').eq('level',i)
             .order('time',{ascending:true}).limit(1).maybeSingle();
         levelRecords[i]=data&&!isPrivileged(data.username)?data:null;
@@ -2070,7 +2070,7 @@ async function execAdminCommand(raw){
         adminLocalMsg(error?'ERR: '+error.message:data?.error?data.error:user+': '+(data?.total_talent_points??'?')+' TP ('+(data?.spent_talent_points??'?')+' spent)');
     }else if(cmd==='/besttime'){
         const[,user,lvlStr]=parts;const lvl=parseInt(lvlStr);
-        if(!user||isNaN(lvl)||lvl<1||lvl>4){adminLocalMsg('Usage: /besttime [user] [1-4]');return;}
+        if(!user||isNaN(lvl)||lvl<1||lvl>LEVEL_COUNT){adminLocalMsg(`Usage: /besttime [user] [1-${LEVEL_COUNT}]`);return;}
         const{data,error}=await db.rpc('admin_get_besttime',{p_target:user,p_level:lvl-1,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
     }else{
@@ -2631,7 +2631,7 @@ Promise.all([
         return {bx:Math.floor(SCREEN_WM-START_BUTTON_WIDTH/2),by:Math.floor(SCREEN_HM-START_BUTTON_HEIGHT/2),bw:START_BUTTON_WIDTH,bh:START_BUTTON_HEIGHT};
     }
     function getLevelBtn(i){
-        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=4;
+        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=LEVEL_COUNT;
         const lx=Math.floor(SCREEN_WM-(n*step-gap)/2+size/2+i*step);
         return {bx:lx-size/2,by:Math.floor(SCREEN_HM-size/2),bw:size,bh:size};
     }
@@ -2903,7 +2903,7 @@ Promise.all([
         } else if(page==='LEVEL_SELECT'){
             canvas.style.cursor='default';
             menuBg.update(dt);
-            for(let i=0;i<4;i++){
+            for(let i=0;i<LEVEL_COUNT;i++){
                 const lb=getLevelBtn(i);
                 if(mjp&&inRect(mouseX,mouseY,lb.bx,lb.by,lb.bw,lb.bh)){
                     currentLevel=i;
@@ -2917,7 +2917,7 @@ Promise.all([
             if(mjp&&inRect(mouseX,mouseY,lsBb.bx,lsBb.by,lsBb.bw,lsBb.bh)) page='LEVELS';
             ctx.fillStyle='#000';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             menuBg.render(ctx,sheet);
-            for(let i=0;i<4;i++){
+            for(let i=0;i<LEVEL_COUNT;i++){
                 const lb=getLevelBtn(i);
                 renderButton(ctx,btnSheet,textSheet,2,lb.bx,lb.by,lb.bw,lb.bh,String(i+1));
             }
@@ -3085,10 +3085,10 @@ Promise.all([
 
             // Level tabs
             const tabGap=10,tabH=80,tabY=10;
-            const tabW=Math.floor((SCREEN_WIDTH-60-3*tabGap)/4);
-            const tabsTotal=4*tabW+3*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
-            const levelNames=['MAP 1','MAP 2','MAP 3','MAP 4'];
-            for(let i=0;i<4;i++){
+            const tabW=Math.floor((SCREEN_WIDTH-60-(LEVEL_COUNT-1)*tabGap)/LEVEL_COUNT);
+            const tabsTotal=LEVEL_COUNT*tabW+(LEVEL_COUNT-1)*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
+            const levelNames=Array.from({length: LEVEL_COUNT}, (_, idx) => 'MAP ' + (idx + 1));
+            for(let i=0;i<LEVEL_COUNT;i++){
                 const tx=tabsX+i*(tabW+tabGap),ty=tabY;
                 const active=lbLevel===i;
                 renderTextButton(ctx,active?btnSheet:greySheet,textSheet,0,tx,ty,tabW,levelNames[i],0,0,0);
