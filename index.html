@@ -542,6 +542,7 @@ const LEVEL_START_X=[3300,-1200,-1200,-1236,3300];
 const LEVEL_START_Y=[4100,-500,4100,3998,4100];
 const LEVEL_BACKGROUND=[1,1,2,2,1];
 const LEVEL_MAPS=[LEVEL_1,LEVEL_2,LEVEL_3,LEVEL_4,LEVEL_5];
+const LEVEL_COUNT = LEVEL_MAPS.length;
 const LEVEL_LOBBY=[
 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
@@ -666,7 +667,7 @@ let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
-let levelRecords=new Array(4).fill(null); // {username, time} per level
+let levelRecords=new Array(LEVEL_COUNT).fill(null); // {username, time} per level
 let deleteConfirm=false;
 let activeInput=null; // 'username'|'password'
 const inputValues={username:'',password:'',confirmPw:''};
