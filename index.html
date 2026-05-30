@@ -3,7 +3,7 @@
 <head>
 <title>Ice Drift</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>body{margin:0;overflow:hidden;background:#000;touch-action:none;}canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}</style>
+<style>body{margin:0;overflow:hidden;background:#000;touch-action:none;}canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;transform:translateZ(0);}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
@@ -655,7 +655,7 @@ function getMobBoostRect(){return{x:SCREEN_WIDTH-150,y:SCREEN_HEIGHT-150,w:120,h
 let showHitboxes=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
-const ADMINS=['cookery','19k','TheCurseKing','notantanthony'];
+const ADMINS=['cookery','19k','TheCurseKing','notantanthonyyt'];
 const BANNED_LB=['h4ck3r'];
 function isDeveloper(u){return DEVELOPERS.includes((u||'').toLowerCase());}
 function isAdmin(u){return ADMINS.includes((u||'').toLowerCase());}
@@ -845,7 +845,7 @@ function talentBuyTalent(id){
     if(b===6)autoBuy(0,2);
     if(b===8)autoBuy(7,3);
     if(b===9)autoBuy(2,7);
-    if(b===10)autoBuy(8,1);
+    if(b===10){autoBuy(7,3);autoBuy(8,1);}
     for(let x=0;x<=l;x++){const tid=b*LEVELS_PER_BRANCH+x;if(!talentPurchased[tid]){talentPurchased[tid]=true;spentTalentPoints+=talentCost(b,x);talentApplyEffect(tid);}}
     dbSaveProfile();
 }
@@ -1269,7 +1269,7 @@ class Car {
             const t=tiles[i][j];
             if(!hasIntersection(hb,t.hitbox)) continue;
             if(t.active&&(t.type==="ICE"||t.type==="SPEED_UP"||t.type==="SPEED_LEFT"||t.type==="SPEED_DOWN"||t.type==="SPEED_RIGHT")) onIce=true;
-            if(t.active&&(t.type==="SPEED_UP"||t.type==="SPEED_LEFT"||t.type==="SPEED_DOWN"||t.type==="SPEED_RIGHT")){speedGlowStart=performance.now();speedTileEnd=speedGlowStart+2000;}
+            if(t.active&&(t.type==="SPEED_UP"||t.type==="SPEED_LEFT"||t.type==="SPEED_DOWN"||t.type==="SPEED_RIGHT")){const _sn=performance.now();if(_sn>=speedTileEnd)speedGlowStart=_sn;speedTileEnd=_sn+2000;}
             if(t.active&&t.type==="GRASS") anyGrass=true; else allGrass=false;
             if(t.active&&t.type==="END"&&!finish){
                 finish=true; finishTick=performance.now();
@@ -1469,7 +1469,7 @@ class Car {
         const bsT=Math.min((performance.now()-boostStretchStart)/500,1);
         const bsVal=bsT<1?Math.exp(-3.5*bsT)*Math.cos(2.2*Math.PI*bsT):0;
         const spdNow=Math.min(Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel)/38,1);
-        const bsX=(1-0.35*bsVal)*(1+spdNow*0.07),bsY=(1+0.45*bsVal)*(1-spdNow*0.04);
+        const bsX=(1-0.35*bsVal)*(1+spdNow*0.22),bsY=(1+0.45*bsVal)*(1-spdNow*0.14);
         ctx.save();
         ctx.globalAlpha=50/255;
         ctx.filter='brightness(0)';
@@ -1538,8 +1538,8 @@ class Background {
         }
     }
     update(px,py){
-        const offX=((Math.trunc(px-this.initCarX)%TILE_SIZE)+TILE_SIZE)%TILE_SIZE;
-        const offY=((Math.trunc(py-this.initCarY)%TILE_SIZE)+TILE_SIZE)%TILE_SIZE;
+        const offX=((px-this.initCarX)%TILE_SIZE+TILE_SIZE)%TILE_SIZE;
+        const offY=((py-this.initCarY)%TILE_SIZE+TILE_SIZE)%TILE_SIZE;
         for(let i=0;i<this.bh;i++)
             for(let j=0;j<this.bw;j++){
                 this.rects[i][j].x=(j-this.extraX)*TILE_SIZE-offX;
@@ -1762,8 +1762,9 @@ function resizeCanvas(){
 resizeCanvas();
 
 mouseX=SCREEN_WM; mouseY=SCREEN_HM;
+let _lastClientX=window.innerWidth/2,_lastClientY=window.innerHeight/2;
 function toDesign(cx,cy){const r=canvas.getBoundingClientRect();return[((cx-r.left)*dpr-gameOffX)/gameScale,((cy-r.top)*dpr-gameOffY)/gameScale];}
-canvas.addEventListener('mousemove',e=>{[mouseX,mouseY]=toDesign(e.clientX,e.clientY);});
+canvas.addEventListener('mousemove',e=>{_lastClientX=e.clientX;_lastClientY=e.clientY;[mouseX,mouseY]=toDesign(e.clientX,e.clientY);});
 canvas.addEventListener('mousedown',e=>{
     if(e.button===0){
         const mb=getMobBoostRect();
@@ -1995,7 +1996,11 @@ function unsubscribeFromProfile(){
     profileChannel.unsubscribe();
     profileChannel=null;
 }
-function subscribeToVersion(){
+async function subscribeToVersion(){
+    const{data}=await db.from('game_version').select('version').eq('id',1).single();
+    if(data&&data.version!==UPDATE_LOG[0].date){
+        await db.from('game_version').update({version:UPDATE_LOG[0].date,updated_at:new Date().toISOString()}).eq('id',1);
+    }
     db.channel('game-version-watch')
         .on('postgres_changes',{event:'UPDATE',schema:'public',table:'game_version'},()=>{location.reload();})
         .subscribe();
@@ -2228,6 +2233,15 @@ const UPDATE_LOG=[
         '- Added mobile chat typing support.',
         '- Added drag to scroll in Leaderboard and Updates on mobile.',
         '- Updates button now wobbles when there is a new update.',
+        '- Added chat history. Open chat to scroll through all',
+        '  messages since you logged in.',
+        '- Other players in the Lobby now show particles',
+        '  (ice drift, wall hits, boost).',
+        '- Wall particles now emit from the contact point.',
+        '- Speed block glow fades in and out smoothly.',
+        '- Car now squishes slightly at high speed.',
+        '- Game now auto-reloads when a new version is available.',
+        '- Fixed Evasion talent causing negative Talent Points.',
         '- Security improvements.',
     ]},
     {date:'MAY 28TH 2026',lines:[
@@ -2635,6 +2649,7 @@ Promise.all([
         resizeCanvas();
         bg.rebuild();
         menuBg.rebuild();
+        [mouseX,mouseY]=toDesign(_lastClientX,_lastClientY);
     });
 
     let lastTime=0;
@@ -3954,12 +3969,13 @@ Promise.all([
 
         // ── Global chat (visible on all pages when logged in) ──
         if(currentUser){
-            const CBX=170,CBW=460,msgLineH=36,INH=40,INY=SCREEN_HEIGHT-INH-30;
-            const bgH=7*3+10;
+            const CBX=80,CBW=Math.min(550,SCREEN_WIDTH-CBX-10),msgLineH=36,INH=40,INY=SCREEN_HEIGHT-INH-30;
+            const bgH=7*3+10,_cw=CBW-20,_cp=4*3+3;
             function renderChatMsg(m,rowY,alpha){
                 if(m.system){
-                    const sText=('> '+m.text).slice(0,42);
-                    const sW=sText.length*(4*3+3)+20;
+                    const maxSCh=Math.max(8,Math.floor(_cw/_cp));
+                    const sText=('> '+m.text).slice(0,maxSCh);
+                    const sW=sText.length*_cp+20;
                     ctx.save();ctx.globalAlpha=alpha*0.6;ctx.fillStyle='#1a1200';
                     ctx.beginPath();ctx.roundRect(CBX,rowY-5,sW,bgH,4);ctx.fill();ctx.restore();
                     ctx.save();ctx.globalAlpha=alpha;
@@ -3969,8 +3985,9 @@ Promise.all([
                     const isOwn=m.uid===currentUser?.id;
                     const unStr=(m.username||'anonymous').toUpperCase()+': ';
                     const unW=unStr.length*(4*3+3);
-                    const msgText=m.text.slice(0,38);
-                    const msgW=msgText.length*(4*3+3);
+                    const maxCh=Math.max(4,Math.floor((_cw-unW)/_cp));
+                    const msgText=m.text.slice(0,maxCh);
+                    const msgW=msgText.length*_cp;
                     const bgW=unW+msgW+20;
                     ctx.save();ctx.globalAlpha=alpha*0.55;ctx.fillStyle='#000';
                     ctx.beginPath();ctx.roundRect(CBX,rowY-5,bgW,bgH,4);ctx.fill();ctx.restore();
