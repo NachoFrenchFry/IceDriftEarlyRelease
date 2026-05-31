@@ -1288,7 +1288,7 @@ class Car {
             if(!hasIntersection(hb,t.hitbox)) continue;
             if(t.active&&(t.type==="ICE"||t.type==="SPEED_UP"||t.type==="SPEED_LEFT"||t.type==="SPEED_DOWN"||t.type==="SPEED_RIGHT")) onIce=true;
             if(t.active&&(t.type==="SPEED_UP"||t.type==="SPEED_LEFT"||t.type==="SPEED_DOWN"||t.type==="SPEED_RIGHT")){const _sn=performance.now();if(_sn>=speedTileEnd)speedGlowStart=_sn;speedTileEnd=_sn+2000;}
-            if(!adminWallPhase&&t.active&&t.type==="GRASS") anyGrass=true; else allGrass=false;
+            if(!adminWallPhase&&!adminInvincibility&&t.active&&t.type==="GRASS") anyGrass=true; else allGrass=false;
             if(t.active&&t.type==="CHECKPOINT"){
                 const nx=t.initialX+TILE_SIZE/2-SCREEN_WM;
                 const ny=t.initialY+TILE_SIZE/2-SCREEN_HM;
@@ -1409,7 +1409,7 @@ class Car {
 
         // Friction
         const onGrass=anyGrass&&allGrass;
-        const ff=onGrass?0.91:(onIce||adminWallPhase)?FRICTION:0.9;
+        const ff=onGrass?0.91:(onIce||adminWallPhase||adminInvincibility)?FRICTION:0.9;
         this.xVel*=Math.pow(ff,dt); this.yVel*=Math.pow(ff,dt);
         if(Math.abs(this.xVel)<0.05) this.xVel=0;
         if(Math.abs(this.yVel)<0.05) this.yVel=0;
@@ -1427,7 +1427,7 @@ class Car {
         // Speed cap (suspended while boost override is active)
         const spd=Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel);
         if(boostOverriding&&spd<=35) boostOverriding=false;
-        if(!boostOverriding&&performance.now()>=speedTileEnd&&spd>35){this.xVel=this.xVel/spd*35;this.yVel=this.yVel/spd*35;}
+        if(!boostOverriding&&performance.now()>=speedTileEnd&&spd>35&&!adminWallPhase&&!adminInvincibility){this.xVel=this.xVel/spd*35;this.yVel=this.yVel/spd*35;}
 
         // Position update
         this.xPos+=this.xVel*dt; this.yPos+=this.yVel*dt;
