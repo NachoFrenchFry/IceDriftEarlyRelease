@@ -1957,6 +1957,7 @@ async function dbDeleteAccount(){
     currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
     talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
     inputValues.username='';inputValues.password='';deleteConfirm=false;
+    adminInvincibility=false;adminWallPhase=false;
     page='MENU';
 }
 async function dbChangeUsername(newUsername){
@@ -3318,7 +3319,8 @@ Promise.all([
                             leaveChatChannel();leaveLobbyChannel();unsubscribeFromProfile();
                             currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
                             talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
-                            inputValues.username='';inputValues.password='';deleteConfirm=false;setChatActive(false);page='MENU';
+                            inputValues.username='';inputValues.password='';deleteConfirm=false;setChatActive(false);
+                            adminInvincibility=false;adminWallPhase=false;page='MENU';
                         }
                         if(inRect(mouseX,mouseY,delX,delY,delW,delH)) deleteConfirm=!deleteConfirm;
                     }
