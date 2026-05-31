@@ -538,6 +538,7 @@ const LEVEL_5=[
 [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
+
 const LEVEL_START_X=[3300,-1200,-1200,-1236,-1100];
 const LEVEL_START_Y=[4100,-500,4100,3998,4100];
 const LEVEL_BACKGROUND=[1,1,2,2,2];
@@ -656,7 +657,7 @@ function getMobBoostRect(){return{x:SCREEN_WIDTH-150,y:SCREEN_HEIGHT-150,w:120,h
 let showHitboxes=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
-const ADMINS=['cookery','19k','TheCurseKing','notantanthonyyt'];
+const ADMINS=['cookery','TheCurseKing','notantanthonyyt'];
 const BANNED_LB=['h4ck3r'];
 function isDeveloper(u){return DEVELOPERS.includes((u||'').toLowerCase());}
 function isAdmin(u){return ADMINS.includes((u||'').toLowerCase());}
@@ -667,11 +668,11 @@ let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
-let levelRecords=new Array(LEVEL_COUNT).fill(null); // {username, time} per level
+let levelRecords=[]; // {username, time} per level
 let deleteConfirm=false;
 let activeInput=null; // 'username'|'password'
 const inputValues={username:'',password:'',confirmPw:''};
-let showPassword=false;
+let showPassword=false,cpShowPw=[false,false,false];
 let authFieldRects={un:null,pw:null};
 let caretPos=0;
 let mouseX,mouseY;
@@ -684,13 +685,15 @@ const TALENT_COUNT=88,LEVELS_PER_BRANCH=8;
 const BTN_SIZE=100,BTN_GAP=20,BTN_STEP=120;
 const START_BUTTON_WIDTH=200,START_BUTTON_HEIGHT=100;
 const LEVEL_BUTTON_SIZE=100,LEVEL_BUTTON_GAP=20;
-const SKINS=[{name:'DEFAULT',price:0,sx:0,sw:15},{name:'Y2K',price:500,sx:31,sw:15},{name:'SKATEBOARD',price:1000,sx:15,sw:16},{name:'ANT MOBILE',price:5000,sx:46,sw:17}];
+const SKINS=[{name:'DEFAULT',price:0,sx:0,sw:15},{name:'Y2K',price:500,sx:31,sw:15},{name:'SKATEBOARD',price:1000,sx:15,sw:16},{name:'ANT MOBILE',price:5000,sx:46,sw:17},{name:'DEV SKIN',price:0,sx:63,sw:25,exclusive:['nachofrenchfry','bbb']}];
 const ADMIN_COMMANDS=[
     {cmd:'/givedriftcoins',   args:'[USER] [AMOUNT]',  desc:'GIVE DC'},
     {cmd:'/givetalentpoints', args:'[USER] [AMOUNT]',  desc:'GIVE TP'},
     {cmd:'/removedriftcoins', args:'[USER] [AMOUNT]',  desc:'REMOVE DC'},
     {cmd:'/removetalentpoints',args:'[USER] [AMOUNT]', desc:'REMOVE TP'},
     {cmd:'/resettalents',     args:'[USER]',            desc:'RESET TALENTS'},
+    {cmd:'/resetdriftcoins',  args:'[USER]',            desc:'RESET DC TO 0'},
+    {cmd:'/resettalentpoints',args:'[USER]',            desc:'RESET TP TO 0'},
     {cmd:'/mute',             args:'[USER] [SECONDS]', desc:'MUTE USER'},
     {cmd:'/password',         args:'[USER]',            desc:'ACCOUNT INFO'},
     {cmd:'/driftcoins',       args:'[USER]',            desc:'CHECK DC'},
@@ -737,6 +740,8 @@ let secondChanceImmune=false,secondChanceImmunityEnd=0,secondChanceCooldownEnd=0
 let secondChanceTotalDuration=1,secondChanceImmunityTotal=1;
 let boostOverriding=false;
 let particles=[],iceParticleAccum=0,prevIceVelX=0,prevIceVelY=0;
+let ghostTrail=[],ghostTrailLastRecord=0;
+let _prevCursor='default',_sc2Pfx=0,_spdPfx=0;
 let chatHistory=[],chatHistoryScroll=0,chatHistTouchId=null,chatHistTouchStartY=0,chatHistTouchStartScroll=0;
 let shopScroll=0,settingsScroll=0;
 let lobbyPfxQueue=[],_lobbyDrift=null;
@@ -789,6 +794,7 @@ function talentTotalCostToBuy(id){
     if(b===6)add(0,2);
     if(b===8)add(7,3);
     if(b===9)add(2,7);
+    if(b===10){add(7,3);add(8,1);}
     for(let x=0;x<=l;x++){const tid=b*LEVELS_PER_BRANCH+x;if(!talentPurchased[tid])total+=talentCost(b,x);}
     return total;
 }
@@ -803,7 +809,7 @@ function talentAutoBuyCount(id){
     if(b===6)cnt(0,2);
     if(b===8)cnt(7,3);
     if(b===9)cnt(2,7);
-    if(b===10)cnt(8,1);
+    if(b===10){cnt(7,3);cnt(8,1);}
     for(let x=0;x<l;x++)if(!talentPurchased[b*LEVELS_PER_BRANCH+x])n++;
     return n;
 }
@@ -1153,7 +1159,7 @@ class Tile {
             const rx=Math.round(hb.x),ry=Math.round(hb.y);
             const cx=rx+hb.w/2,cy=ry+hb.h/2;
             ctx.save();ctx.translate(cx,cy);ctx.rotate(this.rot*Math.PI/2);
-            ctx.drawImage(sheet,sx,sy,17,17,-hb.w/2-1,-hb.h/2-1,hb.w+2,hb.h+2);
+            ctx.drawImage(sheet,sx,sy,17,17,-hb.w/2-2,-hb.h/2-2,hb.w+4,hb.h+4);
             ctx.restore();
             if(showHitboxes){
                 if(this.type==="ICE"  ){ctx.strokeStyle='rgb(255,255,0)';ctx.strokeRect(hb.x,hb.y,hb.w,hb.h);}
@@ -1186,7 +1192,7 @@ class Tile {
             const rx=Math.round(hb.x),ry=Math.round(hb.y);
             const cx=rx+hb.w/2,cy=ry+hb.h/2;
             ctx.save();ctx.translate(cx,cy);ctx.rotate(this.rot*Math.PI/2);
-            ctx.drawImage(sheet,sx,sy,17,17,-hb.w/2,-hb.h/2,hb.w,hb.h);
+            ctx.drawImage(sheet,sx,sy,17,17,-hb.w/2-2,-hb.h/2-2,hb.w+4,hb.h+4);
             ctx.restore();
             if(showHitboxes){
                 if(this.type==="WALL"      ){ctx.strokeStyle='rgb(255,0,0)';  ctx.strokeRect(hb.x,hb.y,hb.w,hb.h);}
@@ -1274,9 +1280,19 @@ class Car {
             if(t.active&&t.type==="GRASS") anyGrass=true; else allGrass=false;
             if(t.active&&t.type==="END"&&!finish){
                 finish=true; finishTick=performance.now();
+                {const _fb=performance.now();
+                const _cols=[[255,60,60],[255,180,0],[0,230,80],[0,180,255],[230,60,255],[255,240,0],[255,120,30],[60,255,220]];
+                for(let _fi=0;_fi<280;_fi++){
+                    const _fa=Math.random()*Math.PI*2,_fspd=5+Math.random()*22;
+                    const _fc=_cols[_fi%_cols.length];
+                    particles.push({wx:this.xPos+SCREEN_WM+(Math.random()-0.5)*30,wy:this.yPos+SCREEN_HM+(Math.random()-0.5)*30,
+                        vx:Math.cos(_fa)*_fspd,vy:Math.sin(_fa)*_fspd,
+                        born:_fb,life:600+Math.random()*900,size:5+Math.random()*14,
+                        finish:true,r:_fc[0],g:_fc[1],b:_fc[2],rot:Math.random()*Math.PI*2});
+                }}
                 finishTime=(finishTick-gameStartTime-3000)/1000;
                 if(!antiCheatFlagged){
-                const dcRewards=[1,5,10,20,50];
+            const dcRewards=[1,5,10,20,50];
                 driftCoins+=dcRewards[currentLevel]||0;
                 dbSaveProfile();
                 dbSaveTime(currentLevel,finishTime);
@@ -1287,7 +1303,7 @@ class Car {
         // Kill block
         const resetCar=()=>{
             this.xPos=INITIAL_CAR_X;this.yPos=INITIAL_CAR_Y;this.xVel=0;this.yVel=0;
-            finish=false;gameStartTime=performance.now();startWallDeactivated=false;boostOverriding=false;particles=[];iceParticleAccum=0;prevIceVelX=0;prevIceVelY=0;countdownGoEnd=0;evasionDmgCheckEnd=0;
+            finish=false;gameStartTime=performance.now();startWallDeactivated=false;boostOverriding=false;particles=[];iceParticleAccum=0;prevIceVelX=0;prevIceVelY=0;countdownGoEnd=0;evasionDmgCheckEnd=0;ghostTrail=[];ghostTrailLastRecord=0;
             for(let r=0;r<TILE_GRID_HEIGHT;r++) for(let c=0;c<TILE_GRID_WIDTH;c++)
                 if(tiles[r][c].type==="START_WALL") tiles[r][c].active=true;
         };
@@ -1427,7 +1443,7 @@ class Car {
                     {const pnow=performance.now();
                     const bNx=-(bx2/blen),bNy=-(by2/blen);
                     if(page==='LOBBY') lobbyPfxQueue.push({t:'b',dx:bNx,dy:bNy});
-                    for(let _i=0;_i<22;_i++){
+                    for(let _i=0;_i<60;_i++){
                         const a=(Math.random()-0.5)*Math.PI*(Math.random()<0.4?1.1:0.7);
                         const ca=Math.cos(a),sa=Math.sin(a);
                         const pdx=bNx*ca-bNy*sa,pdy=bNx*sa+bNy*ca;
@@ -1469,8 +1485,7 @@ class Car {
         const sOff=5,pivY=10;
         const bsT=Math.min((performance.now()-boostStretchStart)/500,1);
         const bsVal=bsT<1?Math.exp(-3.5*bsT)*Math.cos(2.2*Math.PI*bsT):0;
-        const spdNow=Math.min(Math.sqrt(this.xVel*this.xVel+this.yVel*this.yVel)/38,1);
-        const bsX=(1-0.35*bsVal)*(1+spdNow*0.22),bsY=(1+0.45*bsVal)*(1-spdNow*0.14);
+        const bsX=(1-0.35*bsVal),bsY=(1+0.45*bsVal);
         ctx.save();
         ctx.globalAlpha=50/255;
         ctx.filter='brightness(0)';
@@ -1539,8 +1554,8 @@ class Background {
         }
     }
     update(px,py){
-        const offX=((px-this.initCarX)%TILE_SIZE+TILE_SIZE)%TILE_SIZE;
-        const offY=((py-this.initCarY)%TILE_SIZE+TILE_SIZE)%TILE_SIZE;
+        const offX=Math.floor(((px-this.initCarX)%TILE_SIZE+TILE_SIZE)%TILE_SIZE);
+        const offY=Math.floor(((py-this.initCarY)%TILE_SIZE+TILE_SIZE)%TILE_SIZE);
         for(let i=0;i<this.bh;i++)
             for(let j=0;j<this.bw;j++){
                 this.rects[i][j].x=(j-this.extraX)*TILE_SIZE-offX;
@@ -1765,7 +1780,10 @@ resizeCanvas();
 mouseX=SCREEN_WM; mouseY=SCREEN_HM;
 let _lastClientX=window.innerWidth/2,_lastClientY=window.innerHeight/2;
 function toDesign(cx,cy){const r=canvas.getBoundingClientRect();return[((cx-r.left)*dpr-gameOffX)/gameScale,((cy-r.top)*dpr-gameOffY)/gameScale];}
-canvas.addEventListener('mousemove',e=>{_lastClientX=e.clientX;_lastClientY=e.clientY;[mouseX,mouseY]=toDesign(e.clientX,e.clientY);});
+canvas.addEventListener('mousemove',e=>{
+    _lastClientX=e.clientX;_lastClientY=e.clientY;
+    [mouseX,mouseY]=toDesign(e.clientX,e.clientY);
+});
 canvas.addEventListener('mousedown',e=>{
     if(e.button===0){
         const mb=getMobBoostRect();
@@ -1813,7 +1831,7 @@ canvas.addEventListener('touchstart',e=>{
                 }else if(ir.pw&&tx>=ir.pw.x&&tx<=ir.pw.x+ir.pw.w&&ty>=ir.pw.y&&ty<=ir.pw.y+ir.pw.h){
                     hiddenPW.value=inputValues.password;hiddenPW.focus();activeInput='password';
                 }
-            }else if((page==='GAME'||page==='LOBBY')&&currentUser&&ty>=SCREEN_HEIGHT-70&&ty<=SCREEN_HEIGHT-30&&tx>=170&&tx<=630){
+            }else if((page==='GAME'||page==='LOBBY')&&currentUser&&ty>=SCREEN_HEIGHT-75&&ty<=SCREEN_HEIGHT-25&&tx>=140&&tx<=SCREEN_WIDTH-5){
                 setChatActive(true);
             }
         }
@@ -1922,6 +1940,7 @@ async function dbChangeUsername(newUsername){
         if(uErr){authLoading=false;authError=uErr.message;return;}
         const{error:pErr}=await db.from('profiles').update({username:newUsername}).eq('id',currentUser.id);
         if(pErr){authLoading=false;authError=pErr.message;return;}
+        await db.from('times').update({username:newUsername}).eq('user_id',currentUser.id);
         currentUsername=newUsername;authLoading=false;authError='';inputValues.username='';setActiveInput(null);page='SETTINGS';
     }catch(e){authLoading=false;authError='Error: '+e.message;}
 }
@@ -1950,7 +1969,8 @@ function joinLobbyChannel(){
         .on('broadcast',{event:'pos'},({payload})=>{
             if(payload.uid===currentUser?.id)return;
             const prev=otherPlayers[payload.uid]||{};
-            otherPlayers[payload.uid]={x:payload.x,y:payload.y,dir:payload.dir||270,username:payload.username||'',skin:payload.skin||0,bsx:payload.bsx||1,bsy:payload.bsy||1,ts:performance.now(),drift:payload.drift||null,pfxPending:[...(prev.pfxPending||[]),...(payload.pfx||[])],iceAccum:prev.iceAccum||0};
+            const _rcvNow=performance.now();
+            otherPlayers[payload.uid]={x:payload.x,y:payload.y,dir:payload.dir||270,username:payload.username||'',skin:payload.skin||0,bsx:payload.bsx||1,bsy:payload.bsy||1,ts:_rcvNow,drift:payload.drift||null,pfxPending:[...(prev.pfxPending||[]),...(payload.pfx||[])],iceAccum:prev.iceAccum||0,sc_rem:payload.sc_rem||0,sc_total:payload.sc_total||1,sc_ts:_rcvNow,spd_rem:payload.spd_rem||0,spd_el:payload.spd_el||0,spd_ts:_rcvNow,_sc2Pfx:prev._sc2Pfx||0,_spdPfx:prev._spdPfx||0,ghostTrail:(()=>{let _gt=(prev.ghostTrail||[]).filter(g=>_rcvNow-g.born<g.life);const _last=_gt.length>0?_gt[_gt.length-1]:null;const _dx=_last?payload.x-_last.wx:999,_dy=_last?payload.y-_last.wy:999;if((payload.drift?.spd||0)>20&&_dx*_dx+_dy*_dy>22*22)_gt.push({wx:payload.x,wy:payload.y,dir:payload.dir||270,born:_rcvNow,life:380});return _gt;})()};
         })
         .on('presence',{event:'leave'},({leftPresences})=>{
             for(const p of leftPresences)delete otherPlayers[p.key];
@@ -2048,6 +2068,16 @@ async function execAdminCommand(raw){
         if(!user){adminLocalMsg('Usage: /resettalents [user]');return;}
         const{data,error}=await db.rpc('admin_reset_talents',{p_target:user,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/resetdriftcoins'){
+        const[,user]=parts;
+        if(!user){adminLocalMsg('Usage: /resetdriftcoins [user]');return;}
+        const{data,error}=await db.rpc('admin_reset_dc',{p_target:user,p_caller_id:currentUser.id});
+        adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/resettalentpoints'){
+        const[,user]=parts;
+        if(!user){adminLocalMsg('Usage: /resettalentpoints [user]');return;}
+        const{data,error}=await db.rpc('admin_reset_tp',{p_target:user,p_caller_id:currentUser.id});
+        adminLocalMsg(error?'ERR: '+error.message:data);
     }else if(cmd==='/mute'){
         const[,user,secsStr]=parts;const secs=parseInt(secsStr);
         if(!user||isNaN(secs)){adminLocalMsg('Usage: /mute [user] [seconds]');return;}
@@ -2125,7 +2155,7 @@ const hiddenPW=document.getElementById('hiddenPW');
 const hiddenChat=document.getElementById('hiddenChat');
 function setChatActive(val){
     chatActive=val;
-    if(val){hiddenChat.value=chatInput;hiddenChat.setSelectionRange(chatCaretPos,chatCaretPos);hiddenChat.focus();setTimeout(applyKbShift,350);}
+    if(val){hiddenChat.focus();hiddenChat.value=chatInput;hiddenChat.setSelectionRange(chatCaretPos,chatCaretPos);setTimeout(applyKbShift,350);}
     else{hiddenChat.blur();setTimeout(applyKbShift,50);}
 }
 hiddenChat.addEventListener('input',()=>{
@@ -2142,6 +2172,7 @@ hiddenChat.addEventListener('keydown',e=>{
     }
     if(e.key==='Enter'){e.preventDefault();if(isPrivileged(currentUsername)&&chatInput.startsWith('/'))execAdminCommand(chatInput);else sendChatMessage(chatInput);chatInput='';chatCaretPos=0;setChatActive(false);}
     if(e.key==='Escape'){e.preventDefault();chatInput='';chatCaretPos=0;setChatActive(false);}
+    if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'||e.key==='End'){setTimeout(()=>{chatCaretPos=hiddenChat.selectionStart??chatCaretPos;},0);}
 });
 function syncHidden(field){
     const el=field==='username'?hiddenUN:hiddenPW;
@@ -2229,6 +2260,17 @@ document.addEventListener('wheel',e=>{
 },{passive:true});
 
 const UPDATE_LOG=[
+    {date:'MAY 30TH 2026',lines:[
+        '- Finish line now explodes with a burst of colored particles.',
+        '- Car now leaves a ghost trail at very high speed.',
+        '- Second Chance immunity now shows a golden glow and particles.',
+        '- Speed blocks now show a green glow and particles.',
+        '- Fixed chat text cursor not appearing over the chat box.',
+        '- Fixed tile and background gaps, especially on mobile.',
+        '- Added Dev Skin (exclusive).',
+        '- Leaderboard username now updates when you change your username.',
+        '- Added /resetdriftcoins and /resettalentpoints admin commands.',
+    ]},
     {date:'MAY 29TH 2026',lines:[
         '- Speed blocks no longer cap your speed during the effect.',
         '- Added mobile chat typing support.',
@@ -2418,7 +2460,7 @@ Promise.all([
         page='LEVELS';dbLoadRecords();
     }
 
-    function renderInputField(label,fieldKey,x,y,w,h,isPassword){
+    function renderInputField(label,fieldKey,x,y,w,h,isPassword,showVal=showPassword){
         const focused=activeInput===fieldKey;
         // Shadow
         ctx.save();ctx.globalAlpha=80/255;ctx.fillStyle='black';
@@ -2434,7 +2476,7 @@ Promise.all([
         const labelW=label.length*(4*3+3);
         renderText(ctx,textSheet,label,x,y-28,1,0,0,0);
         // Value text
-        const display=isPassword&&!showPassword?'*'.repeat(inputValues[fieldKey].length):inputValues[fieldKey];
+        const display=isPassword&&!showVal?'*'.repeat(inputValues[fieldKey].length):inputValues[fieldKey];
         if(display) renderText(ctx,textSheet,display,x+12,y+h/2-10,1,220,220,240);
         // Blinking caret
         if(focused&&Math.floor(performance.now()/530)%2===0){
@@ -2445,10 +2487,10 @@ Promise.all([
         }
         // Show/hide toggle for password fields
         if(isPassword){
-            const togLbl=showPassword?'HIDE':'SHOW';
+            const togLbl=showVal?'HIDE':'SHOW';
             const togW=togLbl.length*(4*3+3),togH=7*3;
             const togX=x+w-togW-12,togY=y+h/2-togH/2;
-            renderText(ctx,textSheet,togLbl,togX,togY,1,showPassword?160:100,showPassword?200:140,showPassword?255:180);
+            renderText(ctx,textSheet,togLbl,togX,togY,1,showVal?160:100,showVal?200:140,showVal?255:180);
         }
     }
 
@@ -2657,6 +2699,7 @@ Promise.all([
     function loop(now){
         const dt=lastTime?Math.min((now-lastTime)/(1000/60),3):1;
         lastTime=now;
+        let _wantText=false;
         // Fill letterbox areas then apply scale transform
         ctx.setTransform(1,0,0,1,0,0);
         ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -2706,8 +2749,7 @@ Promise.all([
             const fieldW=formW,fieldH=54;
             const unY=Math.floor(SCREEN_HM-100),pwY=unY+100;
             authFieldRects={un:{x:formX,y:unY,w:fieldW,h:fieldH},pw:{x:formX,y:pwY,w:fieldW,h:fieldH}};
-            const hoverField=inRect(mouseX,mouseY,formX,unY,fieldW,fieldH)||inRect(mouseX,mouseY,formX,pwY,fieldW,fieldH);
-            canvas.style.cursor=hoverField?'text':'default';
+            if(inRect(mouseX,mouseY,formX,unY,fieldW,fieldH)||inRect(mouseX,mouseY,formX,pwY,fieldW,fieldH)) _wantText=true;
             const submitW=240,submitH=80,submitX=Math.floor(SCREEN_WM-submitW/2),submitY=pwY+80;
             const backW=160,backH=50,backX=Math.floor(SCREEN_WM-backW/2),backY=submitY+90;
 
@@ -2772,7 +2814,6 @@ Promise.all([
             }
 
         } else if(page==='LEVELS'){
-            canvas.style.cursor='default';
             menuBg.update(dt);
             // 2 horizontal hub buttons (where the 4 level buttons were)
             const hubBtnW=300,hubBtnH=80,hubGap=40;
@@ -2901,7 +2942,6 @@ Promise.all([
             renderDriftCoins(ctx,textSheet,iconsImg);
 
         } else if(page==='LEVEL_SELECT'){
-            canvas.style.cursor='default';
             menuBg.update(dt);
             for(let i=0;i<LEVEL_COUNT;i++){
                 const lb=getLevelBtn(i);
@@ -2936,15 +2976,17 @@ Promise.all([
 
             {const cardW=360,cardH=360,cardGapX=60,cardGapY=40;
             const gridW=cardW*2+cardGapX,gridX=Math.floor(SCREEN_WM-gridW/2);
-            const totalGridH=Math.ceil(SKINS.length/2)*(cardH+cardGapY);
+            const visibleSkinCount=SKINS.filter(sk=>!sk.exclusive||sk.exclusive.includes((currentUsername||'').toLowerCase())).length;
+            const totalGridH=Math.ceil(visibleSkinCount/2)*(cardH+cardGapY);
             shopScroll=Math.max(0,Math.min(shopScroll,Math.max(0,totalGridH-(SCREEN_HEIGHT-200))));
             const gridY=130-shopScroll;
             ctx.save();ctx.rect(0,100,SCREEN_WIDTH,SCREEN_HEIGHT-100);ctx.clip();
             for(let i=0;i<SKINS.length;i++){
                 const sk=SKINS[i];
+                if(sk.exclusive&&!sk.exclusive.includes((currentUsername||'').toLowerCase())) continue;
                 const col=i%2,row=Math.floor(i/2);
                 const cx=gridX+col*(cardW+cardGapX),cy=gridY+row*(cardH+cardGapY);
-                const owned=ownedSkins.includes(i),equipped=selectedSkin===i;
+                const owned=ownedSkins.includes(i)||(sk.exclusive&&sk.exclusive.includes((currentUsername||'').toLowerCase())),equipped=selectedSkin===i;
                 // Card bg
                 ctx.save();ctx.globalAlpha=equipped?1:0.9;
                 ctx.fillStyle=equipped?'rgb(55,110,55)':owned?'rgb(55,55,85)':'rgb(35,35,55)';
@@ -3275,6 +3317,7 @@ Promise.all([
             const cuSubW=240,cuSubX=Math.floor(SCREEN_WM-cuSubW/2),cuSubY=cuFY+80;
             authFieldRects={un:{x:cuFormX,y:cuFY,w:cuFormW,h:cuFH},pw:null};
 
+            if(inRect(mouseX,mouseY,cuFormX,cuFY,cuFormW,cuFH)) _wantText=true;
             if(mjp){
                 if(inRect(mouseX,mouseY,cuFormX,cuFY,cuFormW,cuFH)){
                     setActiveInput('username');
@@ -3308,25 +3351,33 @@ Promise.all([
                 const disp=showPassword?inputValues[fk]:'*'.repeat(inputValues[fk].length);
                 caretPos=getCaretPosFromX(disp,mouseX-(cpFormX+12),1);
             }
+            {const _togW=('SHOW').length*(4*3+3),_togH=7*3,_togPad=8;
+            const _togX=cpFormX+cpFormW-_togW-12;
+            const _cpFYs=[cpF1Y,cpF2Y,cpF3Y];
+            for(const _fy of _cpFYs) if(inRect(mouseX,mouseY,cpFormX,_fy,cpFormW,cpFH)) _wantText=true;
             if(mjp){
-                if(inRect(mouseX,mouseY,cpFormX,cpF1Y,cpFormW,cpFH))      cpFieldClick(cpF1Y,'username');
-                else if(inRect(mouseX,mouseY,cpFormX,cpF2Y,cpFormW,cpFH)) cpFieldClick(cpF2Y,'password');
-                else if(inRect(mouseX,mouseY,cpFormX,cpF3Y,cpFormW,cpFH)) cpFieldClick(cpF3Y,'confirmPw');
-                else if(!inRect(mouseX,mouseY,cpSubX,cpSubY,cpSubW,80))   setActiveInput(null);
-                if(inRect(mouseX,mouseY,cpSubX,cpSubY,cpSubW,80)) authSubmitPending=true;
-            }
+                let _togHit=false;
+                for(let _fi=0;_fi<_cpFYs.length;_fi++){const _tY=_cpFYs[_fi]+cpFH/2-_togH/2;if(inRect(mouseX,mouseY,_togX-_togPad,_tY-_togPad,_togW+_togPad*2,_togH+_togPad*2)){cpShowPw[_fi]=!cpShowPw[_fi];_togHit=true;break;}}
+                if(!_togHit){
+                    if(inRect(mouseX,mouseY,cpFormX,cpF1Y,cpFormW,cpFH))      cpFieldClick(cpF1Y,'username');
+                    else if(inRect(mouseX,mouseY,cpFormX,cpF2Y,cpFormW,cpFH)) cpFieldClick(cpF2Y,'password');
+                    else if(inRect(mouseX,mouseY,cpFormX,cpF3Y,cpFormW,cpFH)) cpFieldClick(cpF3Y,'confirmPw');
+                    else if(!inRect(mouseX,mouseY,cpSubX,cpSubY,cpSubW,80))   setActiveInput(null);
+                    if(inRect(mouseX,mouseY,cpSubX,cpSubY,cpSubW,80)) authSubmitPending=true;
+                }
+            }}
             {const asp=authSubmitPending;authSubmitPending=false;
             if(asp&&!authLoading&&inputValues.username&&inputValues.password){
                 if(inputValues.password!==inputValues.confirmPw) authError="New passwords don't match";
                 else dbChangePassword(inputValues.username,inputValues.password);
             }}
 
-            renderInputField('CURRENT PASSWORD','username',cpFormX,cpF1Y,cpFormW,cpFH,true);
-            renderInputField('NEW PASSWORD','password',cpFormX,cpF2Y,cpFormW,cpFH,true);
-            renderInputField('CONFIRM NEW PASSWORD','confirmPw',cpFormX,cpF3Y,cpFormW,cpFH,true);
+            renderInputField('CURRENT PASSWORD','username',cpFormX,cpF1Y,cpFormW,cpFH,true,cpShowPw[0]);
+            renderInputField('NEW PASSWORD','password',cpFormX,cpF2Y,cpFormW,cpFH,true,cpShowPw[1]);
+            renderInputField('CONFIRM NEW PASSWORD','confirmPw',cpFormX,cpF3Y,cpFormW,cpFH,true,cpShowPw[2]);
             renderTextButton(ctx,btnSheet,textSheet,0,cpSubX,cpSubY,cpSubW,authLoading?'...':'CONFIRM',0,0,0);
             {const bb=getBackBtn();renderButton(ctx,btnSheet,textSheet,4,bb.bx,bb.by,bb.bw,bb.bh,'');}
-            if(mjp){const bb=getBackBtn();if(inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)){setActiveInput(null);authError='';inputValues.username='';inputValues.password='';inputValues.confirmPw='';page='SETTINGS';}}
+            if(mjp){const bb=getBackBtn();if(inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)){setActiveInput(null);authError='';inputValues.username='';inputValues.password='';inputValues.confirmPw='';cpShowPw=[false,false,false];page='SETTINGS';}}
             if(authError){const errW=authError.length*(4*3+3);renderText(ctx,textSheet,authError,Math.floor(SCREEN_WM-errW/2),cpSubY+100,1,255,80,80);}
 
         } else if(page==='GAME'){
@@ -3360,6 +3411,16 @@ Promise.all([
 
             const prevPX=player.xPos+SCREEN_WM,prevPY=player.yPos+SCREEN_HM;
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
+            {const _gspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
+            const _gnow=performance.now();
+            if(_gspd>20){
+                const _gl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
+                const _gdx=_gl?player.xPos-_gl.wx:999,_gdy=_gl?player.yPos-_gl.wy:999;
+                if(_gdx*_gdx+_gdy*_gdy>22*22){
+                    ghostTrail.push({wx:player.xPos,wy:player.yPos,dir:player.drawDir,born:_gnow,life:380});
+                }
+            }
+            ghostTrail=ghostTrail.filter(g=>_gnow-g.born<g.life);}
             {const spd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const prevSpd=Math.sqrt(prevIceVelX*prevIceVelX+prevIceVelY*prevIceVelY);
             let driftFactor=0;
@@ -3369,7 +3430,7 @@ Promise.all([
             }
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
             if(driftFactor>0.02&&spd>0.3){
-                iceParticleAccum+=dt*driftFactor*spd*1.4;
+                iceParticleAccum+=dt*driftFactor*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
                     iceParticleAccum-=1;
@@ -3391,7 +3452,7 @@ Promise.all([
             {const pnow=performance.now();
             if(player.lastWallHit){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
-                const cnt=Math.min(20,Math.floor(wSpd*0.8+4));
+                const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
                 const cY=player.yPos+SCREEN_HM-ny*(CAR_HEIGHT*0.5);
                 for(let i=0;i<cnt;i++){
@@ -3404,7 +3465,7 @@ Promise.all([
                 }
             }
             if(player.lastKillHit){
-                for(let i=0;i<14;i++){
+                for(let i=0;i<50;i++){
                     const a=Math.random()*Math.PI*2,kSpd=3+Math.random()*9;
                     particles.push({wx:prevPX+(Math.random()-0.5)*10,wy:prevPY+(Math.random()-0.5)*10,
                         vx:Math.cos(a)*kSpd,vy:Math.sin(a)*kSpd,
@@ -3412,6 +3473,28 @@ Promise.all([
                 }
                 killGlowEnd=pnow+600;killGlowDur=600;
                 screenShakeEnd=pnow+500;screenShakeDur=500;
+            }
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
+                _sc2Pfx=pnow;
+                for(let _si=0;_si<30;_si++){
+                    const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
+                    const _gold=Math.random()>0.4;
+                    particles.push({wx:player.xPos+SCREEN_WM+(Math.random()-0.5)*36,wy:player.yPos+SCREEN_HM+(Math.random()-0.5)*36,
+                        vx:Math.cos(_sa2)*_ss,vy:Math.sin(_sa2)*_ss-1.2,
+                        born:pnow,life:400+Math.random()*400,size:3+Math.random()*7,
+                        finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
+                }
+            }
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
+                _spdPfx=pnow;
+                for(let _si=0;_si<30;_si++){
+                    const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
+                    const _grn=Math.random()>0.35;
+                    particles.push({wx:player.xPos+SCREEN_WM+(Math.random()-0.5)*32,wy:player.yPos+SCREEN_HM+(Math.random()-0.5)*32,
+                        vx:Math.cos(_sa3)*_ss3,vy:Math.sin(_sa3)*_ss3-0.8,
+                        born:pnow,life:350+Math.random()*350,size:2+Math.random()*6,
+                        finish:true,r:_grn?0:180,g:255,b:_grn?Math.floor(80+Math.random()*80):255,rot:Math.random()*Math.PI*2});
+                }
             }}
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
@@ -3454,18 +3537,19 @@ Promise.all([
             for(const p of particles){
                 const t=(pnow-p.born)/p.life;
                 p.wx+=p.vx*dt; p.wy+=p.vy*dt;
-                p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.smoke?0.90:0.85,dt);
-                p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.smoke?0.90:0.85,dt);
+                p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
+                p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 const sx=p.wx-player.xPos,sy=p.wy-player.yPos;
                 ctx.save();
-                if(p.ice||p.wall||p.kill){
+                if(p.ice||p.wall||p.kill||p.finish){
                     ctx.globalAlpha=Math.pow(1-t,1.5)*0.95;
                     ctx.translate(sx,sy);
                     ctx.rotate(p.rot+t*Math.PI*4);
                     const s=p.size*(1-t*0.3);
                     const br=p.bright??0.5;
                     let r,g,b;
-                    if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
+                    if(p.finish){r=p.r;g=p.g;b=p.b;}
+                    else if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
                     else if(p.kill){r=255;g=Math.floor(30+br*80);b=0;}
                     else if(p.grass){r=Math.floor(30+br*90);g=Math.floor(130+br*110);b=Math.floor(20+br*50);}
                     else{r=Math.floor((15+br*195)*(1-t*0.3));g=Math.floor((60+br*170)*(1-t*0.1));b=255;}
@@ -3485,6 +3569,54 @@ Promise.all([
                 }
                 ctx.restore();
             }}
+            // Ghost trail (world-space, before player)
+            {const _sk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
+            const _rW=_sk.sw*SKIN_SCALE,_rH=CAR_HEIGHT,_pivY=10;
+            const _gnow2=performance.now();
+            const _curSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
+            const _spdFade=Math.max(0,Math.min(1,(_curSpd-18)/6));
+            for(const g of ghostTrail){
+                const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
+                if(_dx*_dx+_dy*_dy<28*28) continue;
+                const _gt=(_gnow2-g.born)/g.life;
+                if(_gt>=1) continue;
+                const _fi=Math.min(1,(_gnow2-g.born)/100);
+                ctx.save();
+                ctx.globalAlpha=Math.max(0,_fi*(1-_gt)*0.5*_spdFade);
+                ctx.imageSmoothingEnabled=false;
+                ctx.translate(SCREEN_WM+(g.wx-player.xPos),SCREEN_HM+(g.wy-player.yPos)-_pivY);
+                ctx.rotate(g.dir*Math.PI/180);
+                ctx.drawImage(carImg,_sk.sx,0,_sk.sw,SKIN_H,-_rW/2,-_rH/2,_rW,_rH);
+                ctx.restore();
+            }}
+            // Second chance golden aura (fade in/out only, no pulse)
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
+                const _sNow=performance.now();
+                const _scEl=_sNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
+                const _scRem=secondChanceImmunityEnd-_sNow;
+                const _scF=Math.min(1,_scEl/400)*Math.min(1,_scRem/400);
+                ctx.save();
+                const _grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM-10,10,SCREEN_WM,SCREEN_HM-10,150);
+                _grd.addColorStop(0,`rgba(255,230,0,${(0.38*_scF).toFixed(2)})`);
+                _grd.addColorStop(0.3,`rgba(255,200,0,${(0.22*_scF).toFixed(2)})`);
+                _grd.addColorStop(0.65,`rgba(255,140,0,${(0.12*_scF).toFixed(2)})`);
+                _grd.addColorStop(1,'rgba(255,80,0,0)');
+                ctx.fillStyle=_grd;ctx.fillRect(SCREEN_WM-155,SCREEN_HM-165,310,330);
+                ctx.restore();
+            }
+            // Speed tile player aura (fade in/out only, no pulse)
+            if(performance.now()<speedTileEnd){
+                const _sn=performance.now(),_sel=_sn-speedGlowStart,_srem=speedTileEnd-_sn;
+                const _sfa=Math.min(1,_sel/300)*Math.min(1,_srem/300);
+                ctx.save();
+                const _sgrd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM-10,10,SCREEN_WM,SCREEN_HM-10,150);
+                _sgrd.addColorStop(0,`rgba(0,255,120,${(0.38*_sfa).toFixed(2)})`);
+                _sgrd.addColorStop(0.3,`rgba(0,220,80,${(0.22*_sfa).toFixed(2)})`);
+                _sgrd.addColorStop(0.65,`rgba(0,180,60,${(0.12*_sfa).toFixed(2)})`);
+                _sgrd.addColorStop(1,'rgba(0,150,40,0)');
+                ctx.fillStyle=_sgrd;ctx.fillRect(SCREEN_WM-155,SCREEN_HM-165,310,330);
+                ctx.restore();
+            }
             player.render(ctx,carImg,showHitboxes);
             ctx.restore();
 
@@ -3617,14 +3749,10 @@ Promise.all([
                 ctx.fillStyle=grd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             }}
             {const _kgt=performance.now();if(_kgt<killGlowEnd){
-                const _elapsed=killGlowDur-(killGlowEnd-_kgt);
-                const _kf=(killGlowEnd-_kgt)/killGlowDur;
-                const _fi=Math.min(1,_elapsed/120);
-                const _fa=_kf*_fi;
                 const grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,Math.min(SCREEN_WIDTH,SCREEN_HEIGHT)*0.1,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.8);
                 grd.addColorStop(0,'rgba(255,0,0,0)');
-                grd.addColorStop(0.5,`rgba(255,0,0,${(_fa*0.45).toFixed(2)})`);
-                grd.addColorStop(1,`rgba(255,0,0,${(_fa*0.8).toFixed(2)})`);
+                grd.addColorStop(0.5,'rgba(255,0,0,0.45)');
+                grd.addColorStop(1,'rgba(255,0,0,0.8)');
                 ctx.fillStyle=grd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             }}
 
@@ -3639,7 +3767,7 @@ Promise.all([
                 for(let i=0;i<TILE_GRID_HEIGHT;i++)
                     for(let j=0;j<TILE_GRID_WIDTH;j++)
                         tiles[i][j].update(player.xPos,player.yPos);
-                boostOverriding=false;particles=[];iceParticleAccum=0;prevIceVelX=0;prevIceVelY=0;
+                boostOverriding=false;particles=[];iceParticleAccum=0;prevIceVelX=0;prevIceVelY=0;ghostTrail=[];
                 otherPlayers={};lastLobbyBroadcast=0;
                 joinLobbyChannel();
                 lobbyLoaded=true;
@@ -3649,10 +3777,20 @@ Promise.all([
             if(mjp&&inRect(mouseX,mouseY,lobbyBb.bx,lobbyBb.by,lobbyBb.bw,lobbyBb.bh)){
                 leaveLobbyChannel();
                 lobbyLoaded=false;
+                ghostTrail=[];
                 page='LEVELS';
             }
 
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
+            {const _lgspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
+            const _lgnow=performance.now();
+            if(_lgspd>20){
+                const _lgl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
+                const _lgdx=_lgl?player.xPos-_lgl.wx:999,_lgdy=_lgl?player.yPos-_lgl.wy:999;
+                if(_lgdx*_lgdx+_lgdy*_lgdy>22*22)
+                    ghostTrail.push({wx:player.xPos,wy:player.yPos,dir:player.drawDir,born:_lgnow,life:380});
+            }
+            ghostTrail=ghostTrail.filter(g=>_lgnow-g.born<g.life);}
             {const spd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const prevSpd=Math.sqrt(prevIceVelX*prevIceVelX+prevIceVelY*prevIceVelY);
             let _ldf=0;
@@ -3663,7 +3801,7 @@ Promise.all([
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
             _lobbyDrift=(_ldf>0.02&&spd>0.3)?{factor:Math.min(1,_ldf),spd,vx:player.xVel/spd,vy:player.yVel/spd}:null;
             if(_ldf>0.02&&spd>0.3){
-                iceParticleAccum+=dt*_ldf*spd*1.4;
+                iceParticleAccum+=dt*_ldf*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
                     iceParticleAccum-=1;
@@ -3685,7 +3823,7 @@ Promise.all([
             {const pnow=performance.now();
             if(player.lastWallHit){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
-                const cnt=Math.min(20,Math.floor(wSpd*0.8+4));
+                const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
                 const cY=player.yPos+SCREEN_HM-ny*(CAR_HEIGHT*0.5);
                 for(let i=0;i<cnt;i++){
@@ -3697,6 +3835,29 @@ Promise.all([
                         born:pnow,life:200+Math.random()*200,size:3+Math.random()*4,wall:true,rot:Math.random()*Math.PI*2,bright:Math.random()});
                 }
                 lobbyPfxQueue.push({t:'w',nx,ny,spd:wSpd});
+            }}
+            {const pnow=performance.now();
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
+                _sc2Pfx=pnow;
+                for(let _si=0;_si<30;_si++){
+                    const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
+                    const _gold=Math.random()>0.4;
+                    particles.push({wx:player.xPos+SCREEN_WM+(Math.random()-0.5)*36,wy:player.yPos+SCREEN_HM+(Math.random()-0.5)*36,
+                        vx:Math.cos(_sa2)*_ss,vy:Math.sin(_sa2)*_ss-1.2,
+                        born:pnow,life:400+Math.random()*400,size:3+Math.random()*7,
+                        finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
+                }
+            }
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
+                _spdPfx=pnow;
+                for(let _si=0;_si<30;_si++){
+                    const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
+                    const _grn=Math.random()>0.35;
+                    particles.push({wx:player.xPos+SCREEN_WM+(Math.random()-0.5)*32,wy:player.yPos+SCREEN_HM+(Math.random()-0.5)*32,
+                        vx:Math.cos(_sa3)*_ss3,vy:Math.sin(_sa3)*_ss3-0.8,
+                        born:pnow,life:350+Math.random()*350,size:2+Math.random()*6,
+                        finish:true,r:_grn?0:180,g:255,b:_grn?Math.floor(80+Math.random()*80):255,rot:Math.random()*Math.PI*2});
+                }
             }}
             // Spawn particles for other players (ice drift + pending pfx events)
             {const pnow=performance.now();
@@ -3717,7 +3878,7 @@ Promise.all([
                 }
                 for(const ev of(op.pfxPending||[])){
                     if(ev.t==='w'){
-                        const cnt2=Math.min(20,Math.floor(ev.spd*0.8+4));
+                        const cnt2=Math.min(55,Math.floor(ev.spd*2.5+10));
                         const cX2=op.x-ev.nx*(CAR_HEIGHT*0.5),cY2=op.y-ev.ny*(CAR_HEIGHT*0.5);
                         for(let i=0;i<cnt2;i++){
                             const a=(Math.random()-0.5)*Math.PI;
@@ -3729,7 +3890,7 @@ Promise.all([
                         }
                     }else if(ev.t==='b'){
                         const bNx=ev.dx,bNy=ev.dy;
-                        for(let _i=0;_i<22;_i++){
+                        for(let _i=0;_i<60;_i++){
                             const a=(Math.random()-0.5)*Math.PI*(Math.random()<0.4?1.1:0.7);
                             const ca=Math.cos(a),sa=Math.sin(a);
                             const pdx=bNx*ca-bNy*sa,pdy=bNx*sa+bNy*ca;
@@ -3738,6 +3899,25 @@ Promise.all([
                                 born:pnow,life:isSmk?(600+Math.random()*500):(200+Math.random()*250),
                                 size:isSmk?(7+Math.random()*8):(3+Math.random()*4),smoke:isSmk});
                         }
+                    }
+                }
+                // Second chance and speed particles for other players
+                const _opScRem=op.sc_rem>0?Math.max(0,op.sc_rem-(pnow-op.sc_ts)):0;
+                if(_opScRem>0&&pnow-(op._sc2Pfx||0)>25){
+                    op._sc2Pfx=pnow;
+                    for(let _si=0;_si<30;_si++){
+                        const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
+                        const _gold=Math.random()>0.4;
+                        particles.push({wx:op.x+(Math.random()-0.5)*36,wy:op.y+(Math.random()-0.5)*36,vx:Math.cos(_sa2)*_ss,vy:Math.sin(_sa2)*_ss-1.2,born:pnow,life:400+Math.random()*400,size:3+Math.random()*7,finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
+                    }
+                }
+                const _opSpdRem=op.spd_rem>0?Math.max(0,op.spd_rem-(pnow-op.spd_ts)):0;
+                if(_opSpdRem>0&&pnow-(op._spdPfx||0)>25){
+                    op._spdPfx=pnow;
+                    for(let _si=0;_si<30;_si++){
+                        const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
+                        const _grn=Math.random()>0.35;
+                        particles.push({wx:op.x+(Math.random()-0.5)*32,wy:op.y+(Math.random()-0.5)*32,vx:Math.cos(_sa3)*_ss3,vy:Math.sin(_sa3)*_ss3-0.8,born:pnow,life:350+Math.random()*350,size:2+Math.random()*6,finish:true,r:_grn?0:180,g:255,b:_grn?Math.floor(80+Math.random()*80):255,rot:Math.random()*Math.PI*2});
                     }
                 }
                 op.pfxPending=[];
@@ -3753,7 +3933,8 @@ Promise.all([
                 lastLobbyBroadcast=now;
                 const _bsT=Math.min((now-boostStretchStart)/500,1);
                 const _bsVal=_bsT<1?Math.exp(-3.5*_bsT)*Math.cos(2.2*Math.PI*_bsT):0;
-                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0)}});
+                const _pfxNow=performance.now();
+                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0),sc_rem:secondChanceImmune&&_pfxNow<secondChanceImmunityEnd?Math.round(secondChanceImmunityEnd-_pfxNow):0,sc_total:secondChanceImmunityTotal,spd_rem:_pfxNow<speedTileEnd?Math.round(speedTileEnd-_pfxNow):0,spd_el:_pfxNow<speedTileEnd?Math.round(_pfxNow-speedGlowStart):0}});
             }}
 
             // Remove stale other players
@@ -3795,17 +3976,18 @@ Promise.all([
             for(const p of particles){
                 const t=(pnow-p.born)/p.life;
                 p.wx+=p.vx*dt;p.wy+=p.vy*dt;
-                p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.smoke?0.90:0.85,dt);
-                p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.smoke?0.90:0.85,dt);
+                p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
+                p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 const sx=p.wx-player.xPos,sy=p.wy-player.yPos;
                 ctx.save();
-                if(p.ice||p.wall||p.kill){
+                if(p.ice||p.wall||p.kill||p.finish){
                     ctx.globalAlpha=Math.pow(1-t,1.5)*0.95;
                     ctx.translate(sx,sy);ctx.rotate(p.rot+t*Math.PI*4);
                     const s=p.size*(1-t*0.3);
                     const br=p.bright??0.5;
                     let r,g,b;
-                    if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
+                    if(p.finish){r=p.r;g=p.g;b=p.b;}
+                    else if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
                     else if(p.kill){r=255;g=Math.floor(30+br*80);b=0;}
                     else if(p.grass){r=Math.floor(30+br*90);g=Math.floor(130+br*110);b=Math.floor(20+br*50);}
                     else{r=Math.floor((15+br*195)*(1-t*0.3));g=Math.floor((60+br*170)*(1-t*0.1));b=255;}
@@ -3822,6 +4004,7 @@ Promise.all([
             }}
             // Other players
             {const sOff=5,pivY=10,visH=CAR_HEIGHT;
+            const _opRenderNow=performance.now();
             for(const[uid,op]of Object.entries(otherPlayers)){
                 const sx=op.x-player.xPos;
                 const sy=op.y-player.yPos;
@@ -3829,6 +4012,50 @@ Promise.all([
                 const opSk=SKINS[Math.min(op.skin||0,SKINS.length-1)];
                 const opW=opSk.sw*SKIN_SCALE,opH=CAR_HEIGHT;
                 const bsX=op.bsx||1,bsY=op.bsy||1;
+                // Ghost trail for other player
+                {const _opSpd=op.drift?.spd||0;
+                const _opSpdFade=Math.max(0,Math.min(1,(_opSpd-18)/6));
+                for(const g of(op.ghostTrail||[])){
+                    if((g.wx-op.x)*(g.wx-op.x)+(g.wy-op.y)*(g.wy-op.y)<28*28) continue;
+                    const _gtt=(_opRenderNow-g.born)/g.life;
+                    if(_gtt>=1) continue;
+                    const _gfi=Math.min(1,(_opRenderNow-g.born)/100);
+                    ctx.save();
+                    ctx.globalAlpha=Math.max(0,_gfi*(1-_gtt)*0.5*_opSpdFade);
+                    ctx.imageSmoothingEnabled=false;
+                    ctx.translate(g.wx-player.xPos,g.wy-player.yPos-pivY);
+                    ctx.rotate(g.dir*Math.PI/180);
+                    ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
+                    ctx.restore();
+                }}
+                // Second chance glow for other player
+                {const _opScRem2=op.sc_rem>0?Math.max(0,op.sc_rem-(_opRenderNow-op.sc_ts)):0;
+                if(_opScRem2>0){
+                    const _opScEl=op.sc_total-_opScRem2;
+                    const _opScF=Math.min(1,_opScEl/400)*Math.min(1,_opScRem2/400);
+                    ctx.save();
+                    const _opGrd=ctx.createRadialGradient(sx,sy-10,10,sx,sy-10,150);
+                    _opGrd.addColorStop(0,`rgba(255,230,0,${(0.38*_opScF).toFixed(2)})`);
+                    _opGrd.addColorStop(0.3,`rgba(255,200,0,${(0.22*_opScF).toFixed(2)})`);
+                    _opGrd.addColorStop(0.65,`rgba(255,140,0,${(0.12*_opScF).toFixed(2)})`);
+                    _opGrd.addColorStop(1,'rgba(255,80,0,0)');
+                    ctx.fillStyle=_opGrd;ctx.fillRect(sx-155,sy-165,310,330);
+                    ctx.restore();
+                }}
+                // Speed glow for other player
+                {const _opSpdRem2=op.spd_rem>0?Math.max(0,op.spd_rem-(_opRenderNow-op.spd_ts)):0;
+                if(_opSpdRem2>0){
+                    const _opSel=(op.spd_el||0)+(_opRenderNow-op.spd_ts);
+                    const _opSfa=Math.min(1,_opSel/300)*Math.min(1,_opSpdRem2/300);
+                    ctx.save();
+                    const _opSgrd=ctx.createRadialGradient(sx,sy-10,10,sx,sy-10,150);
+                    _opSgrd.addColorStop(0,`rgba(0,255,120,${(0.38*_opSfa).toFixed(2)})`);
+                    _opSgrd.addColorStop(0.3,`rgba(0,220,80,${(0.22*_opSfa).toFixed(2)})`);
+                    _opSgrd.addColorStop(0.65,`rgba(0,180,60,${(0.12*_opSfa).toFixed(2)})`);
+                    _opSgrd.addColorStop(1,'rgba(0,150,40,0)');
+                    ctx.fillStyle=_opSgrd;ctx.fillRect(sx-155,sy-165,310,330);
+                    ctx.restore();
+                }}
                 // Shadow
                 ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
                 ctx.translate(sx-sOff,sy+sOff-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
@@ -3867,6 +4094,54 @@ Promise.all([
                     ctx.restore();
                 }}
             }}
+            // Ghost trail (lobby, world-space)
+            {const _lsk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
+            const _lrW=_lsk.sw*SKIN_SCALE,_lrH=CAR_HEIGHT,_lpivY=10;
+            const _lnow2=performance.now();
+            const _lCurSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
+            const _lSpdFade=Math.max(0,Math.min(1,(_lCurSpd-18)/6));
+            for(const g of ghostTrail){
+                const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
+                if(_dx*_dx+_dy*_dy<28*28) continue;
+                const _gt=(_lnow2-g.born)/g.life;
+                if(_gt>=1) continue;
+                const _fi=Math.min(1,(_lnow2-g.born)/100);
+                ctx.save();
+                ctx.globalAlpha=Math.max(0,_fi*(1-_gt)*0.5*_lSpdFade);
+                ctx.imageSmoothingEnabled=false;
+                ctx.translate(SCREEN_WM+(g.wx-player.xPos),SCREEN_HM+(g.wy-player.yPos)-_lpivY);
+                ctx.rotate(g.dir*Math.PI/180);
+                ctx.drawImage(carImg,_lsk.sx,0,_lsk.sw,SKIN_H,-_lrW/2,-_lrH/2,_lrW,_lrH);
+                ctx.restore();
+            }}
+            // Second chance golden aura (lobby local player)
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
+                const _lsNow=performance.now();
+                const _lscEl=_lsNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
+                const _lscRem=secondChanceImmunityEnd-_lsNow;
+                const _lscF=Math.min(1,_lscEl/400)*Math.min(1,_lscRem/400);
+                ctx.save();
+                const _lgrd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM-10,10,SCREEN_WM,SCREEN_HM-10,150);
+                _lgrd.addColorStop(0,`rgba(255,230,0,${(0.38*_lscF).toFixed(2)})`);
+                _lgrd.addColorStop(0.3,`rgba(255,200,0,${(0.22*_lscF).toFixed(2)})`);
+                _lgrd.addColorStop(0.65,`rgba(255,140,0,${(0.12*_lscF).toFixed(2)})`);
+                _lgrd.addColorStop(1,'rgba(255,80,0,0)');
+                ctx.fillStyle=_lgrd;ctx.fillRect(SCREEN_WM-155,SCREEN_HM-165,310,330);
+                ctx.restore();
+            }
+            // Speed tile aura (lobby local player)
+            if(performance.now()<speedTileEnd){
+                const _lsn=performance.now(),_lsel=_lsn-speedGlowStart,_lsrem=speedTileEnd-_lsn;
+                const _lsfa=Math.min(1,_lsel/300)*Math.min(1,_lsrem/300);
+                ctx.save();
+                const _lsgrd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM-10,10,SCREEN_WM,SCREEN_HM-10,150);
+                _lsgrd.addColorStop(0,`rgba(0,255,120,${(0.38*_lsfa).toFixed(2)})`);
+                _lsgrd.addColorStop(0.3,`rgba(0,220,80,${(0.22*_lsfa).toFixed(2)})`);
+                _lsgrd.addColorStop(0.65,`rgba(0,180,60,${(0.12*_lsfa).toFixed(2)})`);
+                _lsgrd.addColorStop(1,'rgba(0,150,40,0)');
+                ctx.fillStyle=_lsgrd;ctx.fillRect(SCREEN_WM-155,SCREEN_HM-165,310,330);
+                ctx.restore();
+            }
             player.render(ctx,carImg,false);
             ctx.restore();
 
@@ -3970,13 +4245,12 @@ Promise.all([
 
         // ── Global chat (visible on all pages when logged in) ──
         if(currentUser){
-            const CBX=80,CBW=Math.min(550,SCREEN_WIDTH-CBX-10),msgLineH=36,INH=40,INY=SCREEN_HEIGHT-INH-30;
-            const bgH=7*3+10,_cw=CBW-20,_cp=4*3+3;
+            const CBX=145,CBW=SCREEN_WIDTH-CBX-10,msgLineH=36,INH=40,INY=SCREEN_HEIGHT-INH-30;
+            const bgH=7*3+10,_cp=4*3+3,_maxBgW=CBW;
             function renderChatMsg(m,rowY,alpha){
                 if(m.system){
-                    const maxSCh=Math.max(8,Math.floor(_cw/_cp));
-                    const sText=('> '+m.text).slice(0,maxSCh);
-                    const sW=sText.length*_cp+20;
+                    const sText=('> '+m.text).slice(0,60);
+                    const sW=Math.min(_maxBgW,sText.length*_cp+20);
                     ctx.save();ctx.globalAlpha=alpha*0.6;ctx.fillStyle='#1a1200';
                     ctx.beginPath();ctx.roundRect(CBX,rowY-5,sW,bgH,4);ctx.fill();ctx.restore();
                     ctx.save();ctx.globalAlpha=alpha;
@@ -3985,11 +4259,10 @@ Promise.all([
                 }else{
                     const isOwn=m.uid===currentUser?.id;
                     const unStr=(m.username||'anonymous').toUpperCase()+': ';
-                    const unW=unStr.length*(4*3+3);
-                    const maxCh=Math.max(4,Math.floor((_cw-unW)/_cp));
-                    const msgText=m.text.slice(0,maxCh);
+                    const unW=unStr.length*_cp;
+                    const msgText=m.text.slice(0,60);
                     const msgW=msgText.length*_cp;
-                    const bgW=unW+msgW+20;
+                    const bgW=Math.min(_maxBgW,unW+msgW+20);
                     ctx.save();ctx.globalAlpha=alpha*0.55;ctx.fillStyle='#000';
                     ctx.beginPath();ctx.roundRect(CBX,rowY-5,bgW,bgH,4);ctx.fill();ctx.restore();
                     ctx.save();ctx.globalAlpha=alpha;
@@ -4085,13 +4358,17 @@ Promise.all([
             }
 
             // Click to activate / deactivate
+            if(inRect(mouseX,mouseY,CBX,INY-12,CBW,INH+24)) _wantText=true;
             if(mjp){
                 const HIST_H=280,histTop=INY-6-HIST_H;
-                if(inRect(mouseX,mouseY,CBX,INY,CBW,INH)) setChatActive(true);
+                if(inRect(mouseX,mouseY,CBX,INY,CBW,INH)){if(chatActive)chatCaretPos=getCaretPosFromX(chatInput,mouseX-(CBX+12),1);setChatActive(true);}
                 else if(chatActive&&!inRect(mouseX,mouseY,CBX,histTop,CBW,INY+INH-histTop)) setChatActive(false);
             }
         }
 
+        {const _chatOver=(page==='GAME'||page==='LOBBY')&&currentUser&&mouseX>=145&&mouseX<=SCREEN_WIDTH-10&&mouseY>=SCREEN_HEIGHT-90&&mouseY<=SCREEN_HEIGHT-20;
+        const nc=(_wantText||_chatOver)?'text':'default';
+        if(nc!==_prevCursor){canvas.style.cursor=nc;_prevCursor=nc;}}
         requestAnimationFrame(loop);
     }
     loop();
