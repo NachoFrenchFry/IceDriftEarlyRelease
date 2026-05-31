@@ -665,6 +665,7 @@ function isPrivileged(u){return isDeveloper(u)||isAdmin(u);}
 let currentUser=null,currentUsername='';
 let authLoading=false,authError='',authSubmitPending=false;
 let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
+let adminGodMode=false,adminNoClip=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
@@ -699,6 +700,8 @@ const ADMIN_COMMANDS=[
     {cmd:'/driftcoins',       args:'[USER]',            desc:'CHECK DC'},
     {cmd:'/talentpoints',     args:'[USER]',            desc:'CHECK TP'},
     {cmd:'/besttime',         args:'[USER] [LEVEL]',    desc:'BEST TIME'},
+    {cmd:'/god',              args:'',                  desc:'TOGGLE GOD MODE'},
+    {cmd:'/noclip',           args:'',                  desc:'TOGGLE NO CLIP'},
 ];
 const SKIN_H=28,SKIN_SCALE=3;
 const BRANCH_X_WORLD=[300,750,1200,1450,1750,2050,550,2350,2650,900,2950];
@@ -1261,8 +1264,8 @@ class Car {
             for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
                 const t=tiles[i][j];
                 if(!t.active) continue;
-                if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) xHit=true;
-                if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){xHit=true;sweepKillHit=true;}
+                if(!adminNoClip&&(t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) xHit=true;
+                if(!adminGodMode&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){xHit=true;sweepKillHit=true;}
             }
         }
         hb.x=hbCx;
@@ -1271,8 +1274,8 @@ class Car {
             for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
                 const t=tiles[i][j];
                 if(!t.active) continue;
-                if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) yHit=true;
-                if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){yHit=true;sweepKillHit=true;}
+                if(!adminNoClip&&(t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) yHit=true;
+                if(!adminGodMode&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){yHit=true;sweepKillHit=true;}
             }
         }
         hb.x=hbCx; hb.y=hbCy;
@@ -1334,7 +1337,7 @@ class Car {
         let killBlockHit=false;
         for(let i=0;i<TILE_GRID_HEIGHT&&!killBlockHit;i++) for(let j=0;j<TILE_GRID_WIDTH&&!killBlockHit;j++){
             const t=tiles[i][j];
-            if(t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){
+            if(!adminGodMode&&t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){
                 killBlockHit=true;
                 if(doDmgCheck){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
@@ -1389,7 +1392,7 @@ class Car {
                     } else { allVoid=false; }
                 }
             if((anyVoid&&allVoid)||!anyActiveTile){
-                if(doDmgCheck){
+                if(doDmgCheck&&!adminGodMode){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
                     secondChanceImmune=true;
                     const imMs=(secondChanceLevel>=2)?3000:1000;
@@ -1432,7 +1435,10 @@ class Car {
         const cHB={x:SCREEN_WM-Math.floor(CAR_WIDTH/2),y:SCREEN_HM-Math.floor(CAR_HEIGHT/2),w:50,h:50};
         for(let pi=0;pi<TILE_GRID_HEIGHT;pi++) for(let pj=0;pj<TILE_GRID_WIDTH;pj++){
             const t=tiles[pi][pj];
-            if(!t.active||t.type!=="WALL"&&t.type!=="START_WALL"&&!(secondChanceImmune&&t.type==="KILL_BLOCK")) continue;
+            if(!t.active) continue;
+            if(adminNoClip&&(t.type==="WALL"||t.type==="START_WALL")) continue;
+            if(adminGodMode&&t.type==="KILL_BLOCK") continue;
+            if(t.type!=="WALL"&&t.type!=="START_WALL"&&!(secondChanceImmune&&t.type==="KILL_BLOCK")) continue;
             const tHB={x:t.initialX-Math.floor(this.xPos),y:t.initialY-Math.floor(this.yPos),w:TILE_SIZE,h:TILE_SIZE};
             const inter=rectIntersect(cHB,tHB);
             if(inter){
@@ -2126,6 +2132,12 @@ async function execAdminCommand(raw){
         if(!user||isNaN(lvl)||lvl<1||lvl>LEVEL_COUNT){adminLocalMsg(`Usage: /besttime [user] [1-${LEVEL_COUNT}]`);return;}
         const{data,error}=await db.rpc('admin_get_besttime',{p_target:user,p_level:lvl-1,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/god'){
+        adminGodMode=!adminGodMode;
+        adminLocalMsg('God mode '+(adminGodMode?'ENABLED':'DISABLED'));
+    }else if(cmd==='/noclip'){
+        adminNoClip=!adminNoClip;
+        adminLocalMsg('No clip '+(adminNoClip?'ENABLED':'DISABLED'));
     }else{
         adminLocalMsg('Unknown command: '+cmd);
     }
