@@ -1409,7 +1409,7 @@ class Car {
 
         // Friction
         const onGrass=anyGrass&&allGrass;
-        const ff=onGrass?0.91:onIce?FRICTION:0.9;
+        const ff=onGrass?0.91:(onIce||adminWallPhase)?FRICTION:0.9;
         this.xVel*=Math.pow(ff,dt); this.yVel*=Math.pow(ff,dt);
         if(Math.abs(this.xVel)<0.05) this.xVel=0;
         if(Math.abs(this.yVel)<0.05) this.yVel=0;
