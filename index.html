@@ -696,6 +696,7 @@ const ADMIN_COMMANDS=[
     {cmd:'/resetdriftcoins',  args:'[USER]',            desc:'RESET DC TO 0'},
     {cmd:'/resettalentpoints',args:'[USER]',            desc:'RESET TP TO 0'},
     {cmd:'/mute',             args:'[USER] [SECONDS]', desc:'MUTE USER'},
+    {cmd:'/unmute',           args:'[USER]',            desc:'UNMUTE USER'},
     {cmd:'/password',         args:'[USER]',            desc:'ACCOUNT INFO'},
     {cmd:'/driftcoins',       args:'[USER]',            desc:'CHECK DC'},
     {cmd:'/talentpoints',     args:'[USER]',            desc:'CHECK TP'},
@@ -2112,6 +2113,11 @@ async function execAdminCommand(raw){
         const[,user,secsStr]=parts;const secs=parseInt(secsStr);
         if(!user||isNaN(secs)){adminLocalMsg('Usage: /mute [user] [seconds]');return;}
         const{data,error}=await db.rpc('admin_mute_user',{p_target:user,p_seconds:secs,p_admin:currentUsername,p_caller_id:currentUser.id});
+        adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/unmute'){
+        const[,user]=parts;
+        if(!user){adminLocalMsg('Usage: /unmute [user]');return;}
+        const{data,error}=await db.rpc('admin_mute_user',{p_target:user,p_seconds:0,p_admin:currentUsername,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
     }else if(cmd==='/password'){
         const[,user]=parts;
