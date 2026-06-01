@@ -665,7 +665,7 @@ function isPrivileged(u){return isDeveloper(u)||isAdmin(u);}
 let currentUser=null,currentUsername='';
 let authLoading=false,authError='',authSubmitPending=false;
 let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
-let adminInvincibility=false,adminWallPhase=false;
+let adminInvincibility=false,adminWallPhase=false,adminInvisibility=false,adminFullInvisibility=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
@@ -703,6 +703,8 @@ const ADMIN_COMMANDS=[
     {cmd:'/besttime',         args:'[USER] [LEVEL]',    desc:'BEST TIME'},
     {cmd:'/invincibility',    args:'',                  desc:'TOGGLE INVINCIBILITY'},
     {cmd:'/wallphase',        args:'',                  desc:'TOGGLE WALL PHASE'},
+    {cmd:'/invisibility',     args:'',                  desc:'TOGGLE INVISIBILITY'},
+    {cmd:'/fullinvisibility', args:'',                  desc:'TOGGLE FULL INVISIBILITY'},
 ];
 const SKIN_H=28,SKIN_SCALE=3;
 const BRANCH_X_WORLD=[300,750,1200,1450,1750,2050,550,2350,2650,900,2950];
@@ -1516,6 +1518,7 @@ class Car {
         const bsT=Math.min((performance.now()-boostStretchStart)/500,1);
         const bsVal=bsT<1?Math.exp(-3.5*bsT)*Math.cos(2.2*Math.PI*bsT):0;
         const bsX=(1-0.35*bsVal),bsY=(1+0.45*bsVal);
+        if(!adminInvisibility&&!adminFullInvisibility){
         ctx.save();
         ctx.globalAlpha=50/255;
         ctx.filter='brightness(0)';
@@ -1532,6 +1535,16 @@ class Car {
         ctx.scale(bsX,bsY);
         ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
         ctx.restore();
+        }else{
+        ctx.save();
+        ctx.globalAlpha=0.3;
+        ctx.imageSmoothingEnabled=false;
+        ctx.translate(SCREEN_WM,SCREEN_HM-pivY);
+        ctx.rotate(this.drawDir*Math.PI/180);
+        ctx.scale(bsX,bsY);
+        ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
+        ctx.restore();
+        }
         if(showHitboxes){
             const hb=this.hitbox;
             ctx.strokeStyle='rgb(255,0,0)';
@@ -1958,7 +1971,7 @@ async function dbDeleteAccount(){
     currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
     talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
     inputValues.username='';inputValues.password='';deleteConfirm=false;
-    adminInvincibility=false;adminWallPhase=false;
+    adminInvincibility=false;adminWallPhase=false;adminInvisibility=false;adminFullInvisibility=false;
     page='MENU';
 }
 async function dbChangeUsername(newUsername){
@@ -1999,9 +2012,10 @@ function joinLobbyChannel(){
     lobbyChannel
         .on('broadcast',{event:'pos'},({payload})=>{
             if(payload.uid===currentUser?.id)return;
+            if(payload.fullInv){delete otherPlayers[payload.uid];return;}
             const prev=otherPlayers[payload.uid]||{};
             const _rcvNow=performance.now();
-            otherPlayers[payload.uid]={x:payload.x,y:payload.y,dir:payload.dir||270,username:payload.username||'',skin:payload.skin||0,bsx:payload.bsx||1,bsy:payload.bsy||1,ts:_rcvNow,drift:payload.drift||null,pfxPending:[...(prev.pfxPending||[]),...(payload.pfx||[])],iceAccum:prev.iceAccum||0,sc_rem:payload.sc_rem||0,sc_total:payload.sc_total||1,sc_ts:_rcvNow,spd_rem:payload.spd_rem||0,spd_el:payload.spd_el||0,spd_ts:_rcvNow,_sc2Pfx:prev._sc2Pfx||0,_spdPfx:prev._spdPfx||0,ghostTrail:(()=>{let _gt=(prev.ghostTrail||[]).filter(g=>_rcvNow-g.born<g.life);const _last=_gt.length>0?_gt[_gt.length-1]:null;const _dx=_last?payload.x-_last.wx:999,_dy=_last?payload.y-_last.wy:999;if((payload.drift?.spd||0)>20&&_dx*_dx+_dy*_dy>22*22)_gt.push({wx:payload.x,wy:payload.y,dir:payload.dir||270,born:_rcvNow,life:380});return _gt;})()};
+            otherPlayers[payload.uid]={x:payload.x,y:payload.y,dir:payload.dir||270,username:payload.username||'',skin:payload.skin||0,bsx:payload.bsx||1,bsy:payload.bsy||1,ts:_rcvNow,drift:payload.drift||null,pfxPending:[...(prev.pfxPending||[]),...(payload.pfx||[])],iceAccum:prev.iceAccum||0,sc_rem:payload.sc_rem||0,sc_total:payload.sc_total||1,sc_ts:_rcvNow,spd_rem:payload.spd_rem||0,spd_el:payload.spd_el||0,spd_ts:_rcvNow,_sc2Pfx:prev._sc2Pfx||0,_spdPfx:prev._spdPfx||0,inv:payload.inv||false,ghostTrail:(()=>{let _gt=(prev.ghostTrail||[]).filter(g=>_rcvNow-g.born<g.life);const _last=_gt.length>0?_gt[_gt.length-1]:null;const _dx=_last?payload.x-_last.wx:999,_dy=_last?payload.y-_last.wy:999;if((payload.drift?.spd||0)>20&&_dx*_dx+_dy*_dy>22*22)_gt.push({wx:payload.x,wy:payload.y,dir:payload.dir||270,born:_rcvNow,life:380});return _gt;})()};
         })
         .on('presence',{event:'leave'},({leftPresences})=>{
             for(const p of leftPresences)delete otherPlayers[p.key];
@@ -2145,6 +2159,12 @@ async function execAdminCommand(raw){
     }else if(cmd==='/wallphase'){
         adminWallPhase=!adminWallPhase;
         adminLocalMsg('Wall phase '+(adminWallPhase?'ENABLED':'DISABLED'));
+    }else if(cmd==='/invisibility'){
+        adminInvisibility=!adminInvisibility;
+        adminLocalMsg('Invisibility '+(adminInvisibility?'ENABLED':'DISABLED'));
+    }else if(cmd==='/fullinvisibility'){
+        adminFullInvisibility=!adminFullInvisibility;
+        adminLocalMsg('Full Invisibility '+(adminFullInvisibility?'ENABLED':'DISABLED'));
     }else{
         adminLocalMsg('Unknown command: '+cmd);
     }
@@ -3326,7 +3346,7 @@ Promise.all([
                             currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
                             talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
                             inputValues.username='';inputValues.password='';deleteConfirm=false;setChatActive(false);
-                            adminInvincibility=false;adminWallPhase=false;page='MENU';
+                            adminInvincibility=false;adminWallPhase=false;adminInvisibility=false;adminFullInvisibility=false;page='MENU';
                         }
                         if(inRect(mouseX,mouseY,delX,delY,delW,delH)) deleteConfirm=!deleteConfirm;
                     }
@@ -3615,7 +3635,7 @@ Promise.all([
                 ctx.restore();
             }}
             // Ghost trail (world-space, before player)
-            {const _sk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
+            if(!adminInvisibility&&!adminFullInvisibility){const _sk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
             const _rW=_sk.sw*SKIN_SCALE,_rH=CAR_HEIGHT,_pivY=10;
             const _gnow2=performance.now();
             const _curSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
@@ -3976,10 +3996,14 @@ Promise.all([
             {const now=performance.now();
             if(currentUser&&now-lastLobbyBroadcast>50){
                 lastLobbyBroadcast=now;
+                if(adminFullInvisibility){
+                    lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,fullInv:true}});
+                }else{
                 const _bsT=Math.min((now-boostStretchStart)/500,1);
                 const _bsVal=_bsT<1?Math.exp(-3.5*_bsT)*Math.cos(2.2*Math.PI*_bsT):0;
                 const _pfxNow=performance.now();
-                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0),sc_rem:secondChanceImmune&&_pfxNow<secondChanceImmunityEnd?Math.round(secondChanceImmunityEnd-_pfxNow):0,sc_total:secondChanceImmunityTotal,spd_rem:_pfxNow<speedTileEnd?Math.round(speedTileEnd-_pfxNow):0,spd_el:_pfxNow<speedTileEnd?Math.round(_pfxNow-speedGlowStart):0}});
+                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0),sc_rem:secondChanceImmune&&_pfxNow<secondChanceImmunityEnd?Math.round(secondChanceImmunityEnd-_pfxNow):0,sc_total:secondChanceImmunityTotal,spd_rem:_pfxNow<speedTileEnd?Math.round(speedTileEnd-_pfxNow):0,spd_el:_pfxNow<speedTileEnd?Math.round(_pfxNow-speedGlowStart):0,inv:adminInvisibility}});
+                }
             }}
 
             // Remove stale other players
@@ -4058,7 +4082,7 @@ Promise.all([
                 const opW=opSk.sw*SKIN_SCALE,opH=CAR_HEIGHT;
                 const bsX=op.bsx||1,bsY=op.bsy||1;
                 // Ghost trail for other player
-                {const _opSpd=op.drift?.spd||0;
+                if(!op.inv){const _opSpd=op.drift?.spd||0;
                 const _opSpdFade=Math.max(0,Math.min(1,(_opSpd-18)/6));
                 for(const g of(op.ghostTrail||[])){
                     if((g.wx-op.x)*(g.wx-op.x)+(g.wy-op.y)*(g.wy-op.y)<28*28) continue;
@@ -4101,6 +4125,7 @@ Promise.all([
                     ctx.fillStyle=_opSgrd;ctx.fillRect(sx-155,sy-165,310,330);
                     ctx.restore();
                 }}
+                if(!op.inv){
                 // Shadow
                 ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
                 ctx.translate(sx-sOff,sy+sOff-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
@@ -4111,6 +4136,7 @@ Promise.all([
                 ctx.translate(sx,sy-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
                 ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
                 ctx.restore();
+                }
                 // Name label
                 if(op.username){
                     const nm=op.username.toUpperCase();
@@ -4140,7 +4166,7 @@ Promise.all([
                 }}
             }}
             // Ghost trail (lobby, world-space)
-            {const _lsk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
+            if(!adminInvisibility&&!adminFullInvisibility){const _lsk=SKINS[Math.min(selectedSkin,SKINS.length-1)];
             const _lrW=_lsk.sw*SKIN_SCALE,_lrH=CAR_HEIGHT,_lpivY=10;
             const _lnow2=performance.now();
             const _lCurSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
