@@ -653,6 +653,7 @@ let aimTouchId=null,boostTouchId=null;
 function getMobBoostRect(){return{x:30,y:SCREEN_HEIGHT-150,w:120,h:120};};
 let showHitboxes=false;
 let adminInvincibility=false,adminWallphase=false;
+let adminInvisibility=false,adminFullInvisibility=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
 const ADMINS=['cookery','TheCurseKing','notantanthonyyt'];
@@ -699,6 +700,8 @@ const ADMIN_COMMANDS=[
     {cmd:'/talentpoints',     args:'[USER]',            desc:'CHECK TP'},
     {cmd:'/besttime',         args:'[USER] [LEVEL]',    desc:'BEST TIME'},
     {cmd:'/invincibility',    args:'',                  desc:'TOGGLE INVINCIBILITY'},
+    {cmd:'/invisibility',     args:'',                  desc:'TOGGLE INVISIBILITY'},
+    {cmd:'/fullinvisibility', args:'',                  desc:'TOGGLE FULL INVISIBILITY'},
     {cmd:'/wallphase',        args:'',                  desc:'TOGGLE WALLPHASE'},
 ];
 const SKIN_H=28,SKIN_SCALE=3;
@@ -1390,7 +1393,7 @@ class Car {
                         else allVoid=false;
                     } else { allVoid=false; }
                 }
-            if((anyVoid&&allVoid)||!anyActiveTile){
+            if(((anyVoid&&allVoid)||!anyActiveTile) && !adminWallphase){
                 if(doDmgCheck){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
                     secondChanceImmune=true;
@@ -1406,8 +1409,8 @@ class Car {
         }
 
         // Friction
-        const onGrass=anyGrass&&allGrass&&!adminWallphase;
-        const ff=onGrass?0.91:onIce?FRICTION:0.9;
+        const onGrass=anyGrass&&allGrass;
+        const ff=adminWallphase?FRICTION:(onGrass?0.91:onIce?FRICTION:0.9);
         this.xVel*=Math.pow(ff,dt); this.yVel*=Math.pow(ff,dt);
         if(Math.abs(this.xVel)<0.05) this.xVel=0;
         if(Math.abs(this.yVel)<0.05) this.yVel=0;
@@ -1514,23 +1517,25 @@ class Car {
         const bsT=Math.min((performance.now()-boostStretchStart)/500,1);
         const bsVal=bsT<1?Math.exp(-3.5*bsT)*Math.cos(2.2*Math.PI*bsT):0;
         const bsX=(1-0.35*bsVal),bsY=(1+0.45*bsVal);
-        ctx.save();
-        ctx.globalAlpha=50/255;
-        ctx.filter='brightness(0)';
-        ctx.imageSmoothingEnabled=false;
-        ctx.translate(SCREEN_WM-sOff,SCREEN_HM+sOff-pivY);
-        ctx.rotate(this.drawDir*Math.PI/180);
-        ctx.scale(bsX,bsY);
-        ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
-        ctx.restore();
-        ctx.save();
-        ctx.imageSmoothingEnabled=false;
-        ctx.translate(SCREEN_WM,SCREEN_HM-pivY);
-        ctx.rotate(this.drawDir*Math.PI/180);
-        ctx.scale(bsX,bsY);
-        ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
-        ctx.restore();
-        if(showHitboxes){
+        if(!adminInvisibility && !adminFullInvisibility) {
+            ctx.save();
+            ctx.globalAlpha=50/255;
+            ctx.filter='brightness(0)';
+            ctx.imageSmoothingEnabled=false;
+            ctx.translate(SCREEN_WM-sOff,SCREEN_HM+sOff-pivY);
+            ctx.rotate(this.drawDir*Math.PI/180);
+            ctx.scale(bsX,bsY);
+            ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
+            ctx.restore();
+            ctx.save();
+            ctx.imageSmoothingEnabled=false;
+            ctx.translate(SCREEN_WM,SCREEN_HM-pivY);
+            ctx.rotate(this.drawDir*Math.PI/180);
+            ctx.scale(bsX,bsY);
+            ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
+            ctx.restore();
+        }
+        if(showHitboxes && !adminFullInvisibility){
             const hb=this.hitbox;
             ctx.strokeStyle='rgb(255,0,0)';
             ctx.strokeRect(hb.x,hb.y,hb.w,hb.h);
@@ -2329,6 +2334,12 @@ async function execAdminCommand(raw){
     }else if(cmd==='/invincibility'){
         adminInvincibility=!adminInvincibility;
         adminLocalMsg('INVINCIBILITY '+(adminInvincibility?'ON':'OFF'));
+    }else if(cmd==='/invisibility'){
+        adminInvisibility=!adminInvisibility;
+        adminLocalMsg('INVISIBILITY '+(adminInvisibility?'ON':'OFF'));
+    }else if(cmd==='/fullinvisibility'){
+        adminFullInvisibility=!adminFullInvisibility;
+        adminLocalMsg('FULL INVISIBILITY '+(adminFullInvisibility?'ON':'OFF'));
     }else if(cmd==='/wallphase'){
         adminWallphase=!adminWallphase;
         adminLocalMsg('WALLPHASE '+(adminWallphase?'ON':'OFF'));
@@ -3848,7 +3859,7 @@ Promise.all([
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
             {const _gspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _gnow=performance.now();
-            if(_gspd>20){
+            if(_gspd>20 && !adminFullInvisibility){
                 const _gl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
                 const _gdx=_gl?player.xPos-_gl.wx:999,_gdy=_gl?player.yPos-_gl.wy:999;
                 if(_gdx*_gdx+_gdy*_gdy>22*22){
@@ -3864,7 +3875,7 @@ Promise.all([
                 driftFactor=cross;
             }
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
-            if(driftFactor>0.02&&spd>0.3){
+            if(driftFactor>0.02&&spd>0.3 && !adminFullInvisibility){
                 iceParticleAccum+=dt*driftFactor*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
@@ -3885,7 +3896,7 @@ Promise.all([
                 }
             }}
             {const pnow=performance.now();
-            if(player.lastWallHit){
+            if(player.lastWallHit && !adminFullInvisibility){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
                 const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
@@ -3899,7 +3910,7 @@ Promise.all([
                         born:pnow,life:200+Math.random()*200,size:3+Math.random()*4,wall:true,rot:Math.random()*Math.PI*2,bright:Math.random()});
                 }
             }
-            if(player.lastKillHit){
+            if(player.lastKillHit && !adminFullInvisibility){
                 for(let i=0;i<50;i++){
                     const a=Math.random()*Math.PI*2,kSpd=3+Math.random()*9;
                     particles.push({wx:prevPX+(Math.random()-0.5)*10,wy:prevPY+(Math.random()-0.5)*10,
@@ -3909,7 +3920,7 @@ Promise.all([
                 killGlowEnd=pnow+600;killGlowDur=600;
                 screenShakeEnd=pnow+500;screenShakeDur=500;
             }
-            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25 && !adminFullInvisibility){
                 _sc2Pfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
@@ -3920,7 +3931,7 @@ Promise.all([
                         finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
                 }
             }
-            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25 && !adminFullInvisibility){
                 _spdPfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
@@ -3932,7 +3943,7 @@ Promise.all([
                 }
             }}
             // Dev skin always-on effects (nachofrenchfry only)
-            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive){
+            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive && !adminFullInvisibility){
                 const _devNow=performance.now();
                 const _da=player.drawDir*Math.PI/180,_dc=Math.cos(_da),_ds=Math.sin(_da);
                 const _cwx=player.xPos+SCREEN_WM,_cwy=player.yPos+SCREEN_HM-10;
@@ -4065,6 +4076,7 @@ Promise.all([
             const _gnow2=performance.now();
             const _curSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _spdFade=Math.max(0,Math.min(1,(_curSpd-18)/6));
+            if(!adminFullInvisibility) {
             for(const g of ghostTrail){
                 const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
                 if(_dx*_dx+_dy*_dy<28*28) continue;
@@ -4079,8 +4091,9 @@ Promise.all([
                 ctx.drawImage(carImg,_sk.sx,0,_sk.sw,SKIN_H,-_rW/2,-_rH/2,_rW,_rH);
                 ctx.restore();
             }}
+            }
             // Second chance golden aura (fade in/out only, no pulse)
-            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd && !adminFullInvisibility){
                 const _sNow=performance.now();
                 const _scEl=_sNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
                 const _scRem=secondChanceImmunityEnd-_sNow;
@@ -4095,7 +4108,7 @@ Promise.all([
                 ctx.restore();
             }
             // Speed tile player aura (fade in/out only, no pulse)
-            if(performance.now()<speedTileEnd){
+            if(performance.now()<speedTileEnd && !adminFullInvisibility){
                 const _sn=performance.now(),_sel=_sn-speedGlowStart,_srem=speedTileEnd-_sn;
                 const _sfa=Math.min(1,_sel/300)*Math.min(1,_srem/300);
                 ctx.save();
@@ -4250,7 +4263,7 @@ Promise.all([
             // Race: broadcast position + HUD
             if(page==='RACE_GAME'){
                 const _rnow=performance.now();
-                if(currentUser&&_rnow-raceLastBroadcast>50){
+                if(currentUser&&_rnow-raceLastBroadcast>50 && !adminFullInvisibility){
                     raceLastBroadcast=_rnow;
                     {const _rv=Math.hypot(player.xVel,player.yVel);
                     const _rda=player.drawDir*Math.PI/180;
@@ -4349,7 +4362,7 @@ Promise.all([
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
             {const _lgspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _lgnow=performance.now();
-            if(_lgspd>20){
+            if(_lgspd>20 && !adminFullInvisibility){
                 const _lgl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
                 const _lgdx=_lgl?player.xPos-_lgl.wx:999,_lgdy=_lgl?player.yPos-_lgl.wy:999;
                 if(_lgdx*_lgdx+_lgdy*_lgdy>22*22)
@@ -4365,7 +4378,7 @@ Promise.all([
             }
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
             _lobbyDrift=(_ldf>0.02&&spd>0.3)?{factor:Math.min(1,_ldf),spd,vx:player.xVel/spd,vy:player.yVel/spd}:null;
-            if(_ldf>0.02&&spd>0.3){
+            if(_ldf>0.02&&spd>0.3 && !adminFullInvisibility){
                 iceParticleAccum+=dt*_ldf*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
@@ -4386,7 +4399,7 @@ Promise.all([
                 }
             }}
             {const pnow=performance.now();
-            if(player.lastWallHit){
+            if(player.lastWallHit && !adminFullInvisibility){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
                 const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
@@ -4402,7 +4415,7 @@ Promise.all([
                 lobbyPfxQueue.push({t:'w',nx,ny,spd:wSpd});
             }}
             {const pnow=performance.now();
-            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25 && !adminFullInvisibility){
                 _sc2Pfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
@@ -4413,7 +4426,7 @@ Promise.all([
                         finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
                 }
             }
-            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25 && !adminFullInvisibility){
                 _spdPfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
@@ -4425,7 +4438,7 @@ Promise.all([
                 }
             }}
             // Dev skin always-on effects (nachofrenchfry only, lobby)
-            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive){
+            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive && !adminFullInvisibility){
                 const _devNow=performance.now();
                 const _da=player.drawDir*Math.PI/180,_dc=Math.cos(_da),_ds=Math.sin(_da);
                 const _cwx=player.xPos+SCREEN_WM,_cwy=player.yPos+SCREEN_HM-10;
@@ -4532,7 +4545,7 @@ Promise.all([
 
             // Broadcast own position
             {const now=performance.now();
-            if(currentUser&&now-lastLobbyBroadcast>50){
+            if(currentUser&&now-lastLobbyBroadcast>50 && !adminFullInvisibility){
                 lastLobbyBroadcast=now;
                 const _bsT=Math.min((now-boostStretchStart)/500,1);
                 const _bsVal=_bsT<1?Math.exp(-3.5*_bsT)*Math.cos(2.2*Math.PI*_bsT):0;
@@ -4703,6 +4716,7 @@ Promise.all([
             const _lnow2=performance.now();
             const _lCurSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _lSpdFade=Math.max(0,Math.min(1,(_lCurSpd-18)/6));
+            if(!adminFullInvisibility) {
             for(const g of ghostTrail){
                 const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
                 if(_dx*_dx+_dy*_dy<28*28) continue;
@@ -4717,8 +4731,9 @@ Promise.all([
                 ctx.drawImage(carImg,_lsk.sx,0,_lsk.sw,SKIN_H,-_lrW/2,-_lrH/2,_lrW,_lrH);
                 ctx.restore();
             }}
+            }
             // Second chance golden aura (lobby local player)
-            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd && !adminFullInvisibility){
                 const _lsNow=performance.now();
                 const _lscEl=_lsNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
                 const _lscRem=secondChanceImmunityEnd-_lsNow;
@@ -4733,7 +4748,7 @@ Promise.all([
                 ctx.restore();
             }
             // Speed tile aura (lobby local player)
-            if(performance.now()<speedTileEnd){
+            if(performance.now()<speedTileEnd && !adminFullInvisibility){
                 const _lsn=performance.now(),_lsel=_lsn-speedGlowStart,_lsrem=speedTileEnd-_lsn;
                 const _lsfa=Math.min(1,_lsel/300)*Math.min(1,_lsrem/300);
                 ctx.save();
@@ -4761,7 +4776,7 @@ Promise.all([
             }
 
             // Self username label
-            if(currentUsername){
+            if(currentUsername && !adminFullInvisibility){
                 const nm=currentUsername.toUpperCase();
                 const nw=nm.length*(4*3+3),padX=8,padY=5;
                 const lx=Math.floor(SCREEN_WM-nw/2-padX),ly=Math.floor(SCREEN_HM-CAR_HEIGHT/2-10-7*3-padY*2-6);
