@@ -655,6 +655,7 @@ let showEdgeGlow=localStorage.getItem('icedrift_edgeglow')!=='0';
 let aimTouchId=null,boostTouchId=null;
 function getMobBoostRect(){return{x:30,y:SCREEN_HEIGHT-150,w:120,h:120};};
 let showHitboxes=false;
+let adminInvincible=false,adminWallphase=false,adminInvisible=false,adminFullInvisible=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
 const ADMINS=['cookery','TheCurseKing','notantanthonyyt'];
@@ -695,10 +696,15 @@ const ADMIN_COMMANDS=[
     {cmd:'/resetdriftcoins',  args:'[USER]',            desc:'RESET DC TO 0'},
     {cmd:'/resettalentpoints',args:'[USER]',            desc:'RESET TP TO 0'},
     {cmd:'/mute',             args:'[USER] [SECONDS]', desc:'MUTE USER'},
+    {cmd:'/unmute',           args:'[USER]',            desc:'UNMUTE USER'},
     {cmd:'/password',         args:'[USER]',            desc:'ACCOUNT INFO'},
     {cmd:'/driftcoins',       args:'[USER]',            desc:'CHECK DC'},
     {cmd:'/talentpoints',     args:'[USER]',            desc:'CHECK TP'},
     {cmd:'/besttime',         args:'[USER] [LEVEL]',    desc:'BEST TIME'},
+    {cmd:'/invincibility',    args:'',                  desc:'TOGGLE INVINCIBILITY'},
+    {cmd:'/wallphase',        args:'',                  desc:'TOGGLE WALLPHASE'},
+    {cmd:'/invisibility',     args:'',                  desc:'TOGGLE INVISIBILITY'},
+    {cmd:'/fullinvisibility', args:'',                  desc:'TOGGLE FULL INVISIBILITY'},
 ];
 const SKIN_H=28,SKIN_SCALE=3;
 const BRANCH_X_WORLD=[300,750,1200,1450,1750,2050,550,2350,2650,900,2950];
@@ -1263,26 +1269,28 @@ class Car {
         const signX=Math.sign(this.xVel),signY=Math.sign(this.yVel);
         const xSteps=Math.ceil(Math.abs(this.xVel*dt));
         const ySteps=Math.ceil(Math.abs(this.yVel*dt));
-        for(let s=0;s<xSteps;s++){
-            hb.x+=signX;
-            for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
-                const t=tiles[i][j];
-                if(!t.active) continue;
-                if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) xHit=true;
-                if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){xHit=true;sweepKillHit=true;}
+        if(!adminWallphase){
+            for(let s=0;s<xSteps;s++){
+                hb.x+=signX;
+                for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
+                    const t=tiles[i][j];
+                    if(!t.active) continue;
+                    if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) xHit=true;
+                    if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){xHit=true;sweepKillHit=true;}
+                }
             }
-        }
-        hb.x=hbCx;
-        for(let s=0;s<ySteps;s++){
-            hb.y+=signY;
-            for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
-                const t=tiles[i][j];
-                if(!t.active) continue;
-                if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) yHit=true;
-                if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){yHit=true;sweepKillHit=true;}
+            hb.x=hbCx;
+            for(let s=0;s<ySteps;s++){
+                hb.y+=signY;
+                for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
+                    const t=tiles[i][j];
+                    if(!t.active) continue;
+                    if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) yHit=true;
+                    if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){yHit=true;sweepKillHit=true;}
+                }
             }
+            hb.x=hbCx; hb.y=hbCy;
         }
-        hb.x=hbCx; hb.y=hbCy;
 
         // ICE / END / SPEED / GRASS detection
         let onIce=false,anyGrass=false,allGrass=true;
@@ -1333,9 +1341,37 @@ class Car {
         };
         const _pnow=performance.now();const doDmgCheck=!evasionUnlocked||_pnow>=evasionDmgCheckEnd;if(doDmgCheck&&evasionUnlocked)evasionDmgCheckEnd=_pnow+1000;
         let killBlockHit=false;
-        for(let i=0;i<TILE_GRID_HEIGHT&&!killBlockHit;i++) for(let j=0;j<TILE_GRID_WIDTH&&!killBlockHit;j++){
-            const t=tiles[i][j];
-            if(t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){
+        if(!adminInvincible && !adminWallphase){
+            for(let i=0;i<TILE_GRID_HEIGHT&&!killBlockHit;i++) for(let j=0;j<TILE_GRID_WIDTH&&!killBlockHit;j++){
+                const t=tiles[i][j];
+                if(t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){
+                    killBlockHit=true;
+                    if(doDmgCheck){
+                    if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
+                        secondChanceImmune=true;
+                        const imMs=(secondChanceLevel>=2)?3000:1000;
+                        secondChanceImmunityEnd=performance.now()+imMs;
+                        secondChanceImmunityTotal=imMs;
+                        const scCD=(secondChanceLevel>=2)?5000:10000;
+                        secondChanceCooldownEnd=secondChanceImmunityEnd+scCD;
+                        secondChanceTotalDuration=scCD;
+                    }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
+                    }
+                    if(secondChanceImmune){
+                        const inter=rectIntersect(hb,t.hitbox);
+                        if(inter){
+                            if(inter.w<=inter.h){
+                                if(hb.x<t.hitbox.x){this.xPos-=inter.w;this.xVel=-Math.abs(this.xVel)*0.15;}
+                                else{this.xPos+=inter.w;this.xVel=Math.abs(this.xVel)*0.15;}
+                            }else{
+                                if(hb.y<t.hitbox.y){this.yPos-=inter.h;this.yVel=-Math.abs(this.yVel)*0.15;}
+                                else{this.yPos+=inter.h;this.yVel=Math.abs(this.yVel)*0.15;}
+                            }
+                        }
+                    }
+                }
+            }
+            if(!killBlockHit&&sweepKillHit){
                 killBlockHit=true;
                 if(doDmgCheck){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
@@ -1348,32 +1384,6 @@ class Car {
                     secondChanceTotalDuration=scCD;
                 }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
                 }
-                if(secondChanceImmune){
-                    const inter=rectIntersect(hb,t.hitbox);
-                    if(inter){
-                        if(inter.w<=inter.h){
-                            if(hb.x<t.hitbox.x){this.xPos-=inter.w;this.xVel=-Math.abs(this.xVel)*0.15;}
-                            else{this.xPos+=inter.w;this.xVel=Math.abs(this.xVel)*0.15;}
-                        }else{
-                            if(hb.y<t.hitbox.y){this.yPos-=inter.h;this.yVel=-Math.abs(this.yVel)*0.15;}
-                            else{this.yPos+=inter.h;this.yVel=Math.abs(this.yVel)*0.15;}
-                        }
-                    }
-                }
-            }
-        }
-        if(!killBlockHit&&sweepKillHit){
-            killBlockHit=true;
-            if(doDmgCheck){
-            if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
-                secondChanceImmune=true;
-                const imMs=(secondChanceLevel>=2)?3000:1000;
-                secondChanceImmunityEnd=performance.now()+imMs;
-                secondChanceImmunityTotal=imMs;
-                const scCD=(secondChanceLevel>=2)?5000:10000;
-                secondChanceCooldownEnd=secondChanceImmunityEnd+scCD;
-                secondChanceTotalDuration=scCD;
-            }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
             }
         }
         this.lastKillHit=killBlockHit;
@@ -1390,22 +1400,24 @@ class Car {
                     } else { allVoid=false; }
                 }
             if((anyVoid&&allVoid)||!anyActiveTile){
-                if(doDmgCheck){
-                if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
-                    secondChanceImmune=true;
-                    const imMs=(secondChanceLevel>=2)?3000:1000;
-                    secondChanceImmunityEnd=performance.now()+imMs;
-                    secondChanceImmunityTotal=imMs;
-                    const scCD=(secondChanceLevel>=2)?5000:10000;
-                    secondChanceCooldownEnd=secondChanceImmunityEnd+scCD;
-                    secondChanceTotalDuration=scCD;
-                }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
+                if(!adminInvincible && !adminWallphase){
+                    if(doDmgCheck){
+                    if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
+                        secondChanceImmune=true;
+                        const imMs=(secondChanceLevel>=2)?3000:1000;
+                        secondChanceImmunityEnd=performance.now()+imMs;
+                        secondChanceImmunityTotal=imMs;
+                        const scCD=(secondChanceLevel>=2)?5000:10000;
+                        secondChanceCooldownEnd=secondChanceImmunityEnd+scCD;
+                        secondChanceTotalDuration=scCD;
+                    }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
+                    }
                 }
             }
         }
 
         // Friction
-        const onGrass=anyGrass&&allGrass;
+        const onGrass=anyGrass&&allGrass&&!adminWallphase;
         const ff=onGrass?0.91:onIce?FRICTION:0.9;
         this.xVel*=Math.pow(ff,dt); this.yVel*=Math.pow(ff,dt);
         if(Math.abs(this.xVel)<0.05) this.xVel=0;
@@ -1430,19 +1442,21 @@ class Car {
         this.xPos+=this.xVel*dt; this.yPos+=this.yVel*dt;
 
         // Pushout pass (resolve wall penetration using new position)
-        const cHB={x:SCREEN_WM-Math.floor(CAR_WIDTH/2),y:SCREEN_HM-Math.floor(CAR_HEIGHT/2),w:50,h:50};
-        for(let pi=0;pi<TILE_GRID_HEIGHT;pi++) for(let pj=0;pj<TILE_GRID_WIDTH;pj++){
-            const t=tiles[pi][pj];
-            if(!t.active||t.type!=="WALL"&&t.type!=="START_WALL"&&!(secondChanceImmune&&t.type==="KILL_BLOCK")) continue;
-            const tHB={x:t.initialX-Math.floor(this.xPos),y:t.initialY-Math.floor(this.yPos),w:TILE_SIZE,h:TILE_SIZE};
-            const inter=rectIntersect(cHB,tHB);
-            if(inter){
-                if(inter.w<=inter.h){
-                    if(cHB.x<tHB.x){this.xPos-=inter.w;if(this.xVel>0)this.xVel=0;}
-                    else{this.xPos+=inter.w;if(this.xVel<0)this.xVel=0;}
-                }else{
-                    if(cHB.y<tHB.y){this.yPos-=inter.h;if(this.yVel>0)this.yVel=0;}
-                    else{this.yPos+=inter.h;if(this.yVel<0)this.yVel=0;}
+        if(!adminWallphase){
+            const cHB={x:SCREEN_WM-Math.floor(CAR_WIDTH/2),y:SCREEN_HM-Math.floor(CAR_HEIGHT/2),w:50,h:50};
+            for(let pi=0;pi<TILE_GRID_HEIGHT;pi++) for(let pj=0;pj<TILE_GRID_WIDTH;pj++){
+                const t=tiles[pi][pj];
+                if(!t.active||t.type!=="WALL"&&t.type!=="START_WALL"&&!((secondChanceImmune||adminInvincible)&&t.type==="KILL_BLOCK")) continue;
+                const tHB={x:t.initialX-Math.floor(this.xPos),y:t.initialY-Math.floor(this.yPos),w:TILE_SIZE,h:TILE_SIZE};
+                const inter=rectIntersect(cHB,tHB);
+                if(inter){
+                    if(inter.w<=inter.h){
+                        if(cHB.x<tHB.x){this.xPos-=inter.w;if(this.xVel>0)this.xVel=0;}
+                        else{this.xPos+=inter.w;if(this.xVel<0)this.xVel=0;}
+                    }else{
+                        if(cHB.y<tHB.y){this.yPos-=inter.h;if(this.yVel>0)this.yVel=0;}
+                        else{this.yPos+=inter.h;if(this.yVel<0)this.yVel=0;}
+                    }
                 }
             }
         }
@@ -2138,6 +2152,7 @@ function startRaceSession(){
             const _rNow=performance.now();
             raceOppX=payload.x;raceOppY=payload.y;raceOppDir=payload.dir||270;
             raceOppSpd=payload.spd||0;raceOppDrift=payload.drift||null;
+            if(payload.skin!==undefined)raceOpponent.skin=payload.skin;
             // ghost trail
             raceOppGhostTrail=raceOppGhostTrail.filter(g=>_rNow-g.born<g.life);
             const _gl=raceOppGhostTrail.length>0?raceOppGhostTrail[raceOppGhostTrail.length-1]:null;
@@ -2318,6 +2333,23 @@ async function execAdminCommand(raw){
         if(!user||isNaN(lvl)||lvl<1||lvl>5){adminLocalMsg('Usage: /besttime [user] [1-5]');return;}
         const{data,error}=await db.rpc('admin_get_besttime',{p_target:user,p_level:lvl-1,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/unmute'){
+        const[,user]=parts;
+        if(!user){adminLocalMsg('Usage: /unmute [user]');return;}
+        const{data,error}=await db.rpc('admin_mute_user',{p_target:user,p_seconds:0,p_admin:currentUsername,p_caller_id:currentUser.id});
+        adminLocalMsg(error?'ERR: '+error.message:data);
+    }else if(cmd==='/invincibility'){
+        adminInvincible=!adminInvincible;
+        adminLocalMsg('INVINCIBILITY '+(adminInvincible?'ON':'OFF'));
+    }else if(cmd==='/wallphase'){
+        adminWallphase=!adminWallphase;
+        adminLocalMsg('WALLPHASE '+(adminWallphase?'ON':'OFF'));
+    }else if(cmd==='/invisibility'){
+        adminInvisible=!adminInvisible;
+        adminLocalMsg('INVISIBILITY '+(adminInvisible?'ON':'OFF'));
+    }else if(cmd==='/fullinvisibility'){
+        adminFullInvisible=!adminFullInvisible;
+        adminLocalMsg('FULL INVISIBILITY '+(adminFullInvisible?'ON':'OFF'));
     }else{
         adminLocalMsg('Unknown command: '+cmd);
     }
@@ -4169,34 +4201,38 @@ Promise.all([
             }
             // Race opponent car + ghost trail (inside world-space transform)
             if(page==='RACE_GAME'&&raceOpponent){
-                const _rSk=SKINS[Math.min(raceOpponent.skin||0,SKINS.length-1)];
-                const _rOpW=_rSk.sw*SKIN_SCALE,_rOpH=CAR_HEIGHT,_rPivY=10;
+                const _rSk=raceOpponent.skin===-1?null:SKINS[Math.min(raceOpponent.skin||0,SKINS.length-1)];
+                const _rOpH=CAR_HEIGHT,_rPivY=10;
                 const _rOppSx=raceOppX-player.xPos;
                 const _rOppSy=raceOppY-player.yPos;
                 const _rDir=raceOppDir*Math.PI/180;
                 const _rNow2=performance.now();
                 const _rSpdFade=Math.max(0,Math.min(1,(raceOppSpd-18)/8));
-                // Ghost trail
-                for(const g of raceOppGhostTrail){
-                    if((g.wx-raceOppX)*(g.wx-raceOppX)+(g.wy-raceOppY)*(g.wy-raceOppY)<28*28)continue;
-                    const _gtt=(_rNow2-g.born)/g.life;if(_gtt>=1)continue;
-                    const _gfi=Math.min(1,(_rNow2-g.born)/100);
-                    ctx.save();ctx.globalAlpha=Math.max(0,_gfi*(1-_gtt)*0.5*_rSpdFade);
-                    ctx.imageSmoothingEnabled=false;
-                    ctx.translate(g.wx-player.xPos,g.wy-player.yPos-_rPivY);ctx.rotate(g.dir*Math.PI/180);
+                
+                if(_rSk){
+                    const _rOpW=_rSk.sw*SKIN_SCALE;
+                    // Ghost trail
+                    for(const g of raceOppGhostTrail){
+                        if((g.wx-raceOppX)*(g.wx-raceOppX)+(g.wy-raceOppY)*(g.wy-raceOppY)<28*28)continue;
+                        const _gtt=(_rNow2-g.born)/g.life;if(_gtt>=1)continue;
+                        const _gfi=Math.min(1,(_rNow2-g.born)/100);
+                        ctx.save();ctx.globalAlpha=Math.max(0,_gfi*(1-_gtt)*0.5*_rSpdFade);
+                        ctx.imageSmoothingEnabled=false;
+                        ctx.translate(g.wx-player.xPos,g.wy-player.yPos-_rPivY);ctx.rotate(g.dir*Math.PI/180);
+                        ctx.drawImage(carImg,_rSk.sx,0,_rSk.sw,SKIN_H,-_rOpW/2,-_rOpH/2,_rOpW,_rOpH);
+                        ctx.restore();
+                    }
+                    // Shadow
+                    ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
+                    ctx.translate(_rOppSx-5,_rOppSy+5-_rPivY);ctx.rotate(_rDir);
+                    ctx.drawImage(carImg,_rSk.sx,0,_rSk.sw,SKIN_H,-_rOpW/2,-_rOpH/2,_rOpW,_rOpH);
+                    ctx.restore();
+                    // Car
+                    ctx.save();ctx.imageSmoothingEnabled=false;
+                    ctx.translate(_rOppSx,_rOppSy-_rPivY);ctx.rotate(_rDir);
                     ctx.drawImage(carImg,_rSk.sx,0,_rSk.sw,SKIN_H,-_rOpW/2,-_rOpH/2,_rOpW,_rOpH);
                     ctx.restore();
                 }
-                // Shadow
-                ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
-                ctx.translate(_rOppSx-5,_rOppSy+5-_rPivY);ctx.rotate(_rDir);
-                ctx.drawImage(carImg,_rSk.sx,0,_rSk.sw,SKIN_H,-_rOpW/2,-_rOpH/2,_rOpW,_rOpH);
-                ctx.restore();
-                // Car
-                ctx.save();ctx.imageSmoothingEnabled=false;
-                ctx.translate(_rOppSx,_rOppSy-_rPivY);ctx.rotate(_rDir);
-                ctx.drawImage(carImg,_rSk.sx,0,_rSk.sw,SKIN_H,-_rOpW/2,-_rOpH/2,_rOpW,_rOpH);
-                ctx.restore();
                 // Name label
                 {const nm=(raceOpponent.username||'OPPONENT').toUpperCase();
                 const nw=nm.length*(4*3+3),padX=8,padY=5;
@@ -4318,13 +4354,13 @@ Promise.all([
             // Race: broadcast position + HUD
             if(page==='RACE_GAME'){
                 const _rnow=performance.now();
-                if(currentUser&&_rnow-raceLastBroadcast>50){
+                if(currentUser&&_rnow-raceLastBroadcast>50 && !adminFullInvisible){
                     raceLastBroadcast=_rnow;
                     {const _rv=Math.hypot(player.xVel,player.yVel);
                     const _rda=player.drawDir*Math.PI/180;
                     const _rCross=_rv>0.3?Math.abs(player.xVel*Math.sin(_rda)-player.yVel*Math.cos(_rda))/_rv:0;
                     const _rDrift=(_rCross>0.08&&_rv>0.3)?{factor:Math.min(1,_rCross),spd:_rv,vx:player.xVel/_rv,vy:player.yVel/_rv}:null;
-                    raceChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,spd:_rv*60,drift:_rDrift}});}
+                    raceChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,spd:_rv*60,drift:_rDrift,skin:adminInvisible?-1:selectedSkin}});}
                 }
                 // Race HUD overlay
                 if(raceOppFin&&!raceLocalFin){
@@ -4618,12 +4654,12 @@ Promise.all([
 
             // Broadcast own position
             {const now=performance.now();
-            if(currentUser&&now-lastLobbyBroadcast>50){
+            if(currentUser&&now-lastLobbyBroadcast>50 && !adminFullInvisible){
                 lastLobbyBroadcast=now;
                 const _bsT=Math.min((now-boostStretchStart)/500,1);
                 const _bsVal=_bsT<1?Math.exp(-3.5*_bsT)*Math.cos(2.2*Math.PI*_bsT):0;
                 const _pfxNow=performance.now();
-                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0),sc_rem:secondChanceImmune&&_pfxNow<secondChanceImmunityEnd?Math.round(secondChanceImmunityEnd-_pfxNow):0,sc_total:secondChanceImmunityTotal,spd_rem:_pfxNow<speedTileEnd?Math.round(speedTileEnd-_pfxNow):0,spd_el:_pfxNow<speedTileEnd?Math.round(_pfxNow-speedGlowStart):0}});
+                lobbyChannel?.send({type:'broadcast',event:'pos',payload:{uid:currentUser.id,x:player.xPos+SCREEN_WM,y:player.yPos+SCREEN_HM,dir:player.drawDir,username:currentUsername,skin:adminInvisible?-1:selectedSkin,bsx:parseFloat((1-0.35*_bsVal).toFixed(3)),bsy:parseFloat((1+0.45*_bsVal).toFixed(3)),drift:_lobbyDrift,pfx:lobbyPfxQueue.splice(0),sc_rem:secondChanceImmune&&_pfxNow<secondChanceImmunityEnd?Math.round(secondChanceImmunityEnd-_pfxNow):0,sc_total:secondChanceImmunityTotal,spd_rem:_pfxNow<speedTileEnd?Math.round(speedTileEnd-_pfxNow):0,spd_el:_pfxNow<speedTileEnd?Math.round(_pfxNow-speedGlowStart):0}});
             }}
 
             // Remove stale other players
@@ -4726,25 +4762,28 @@ Promise.all([
                 const sx=op.x-player.xPos;
                 const sy=op.y-player.yPos;
                 const dir=(op.dir||270)*Math.PI/180;
-                const opSk=SKINS[Math.min(op.skin||0,SKINS.length-1)];
-                const opW=opSk.sw*SKIN_SCALE,opH=CAR_HEIGHT;
+                const opSk=op.skin===-1?null:SKINS[Math.min(op.skin||0,SKINS.length-1)];
+                const opH=CAR_HEIGHT;
                 const bsX=op.bsx||1,bsY=op.bsy||1;
-                // Ghost trail for other player
-                {const _opSpd=op.drift?.spd||0;
-                const _opSpdFade=Math.max(0,Math.min(1,(_opSpd-18)/6));
-                for(const g of(op.ghostTrail||[])){
-                    if((g.wx-op.x)*(g.wx-op.x)+(g.wy-op.y)*(g.wy-op.y)<28*28) continue;
-                    const _gtt=(_opRenderNow-g.born)/g.life;
-                    if(_gtt>=1) continue;
-                    const _gfi=Math.min(1,(_opRenderNow-g.born)/100);
-                    ctx.save();
-                    ctx.globalAlpha=Math.max(0,_gfi*(1-_gtt)*0.5*_opSpdFade);
-                    ctx.imageSmoothingEnabled=false;
-                    ctx.translate(g.wx-player.xPos,g.wy-player.yPos-pivY);
-                    ctx.rotate(g.dir*Math.PI/180);
-                    ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
-                    ctx.restore();
-                }}
+                if(opSk){
+                    const opW=opSk.sw*SKIN_SCALE;
+                    // Ghost trail for other player
+                    {const _opSpd=op.drift?.spd||0;
+                    const _opSpdFade=Math.max(0,Math.min(1,(_opSpd-18)/6));
+                    for(const g of(op.ghostTrail||[])){
+                        if((g.wx-op.x)*(g.wx-op.x)+(g.wy-op.y)*(g.wy-op.y)<28*28) continue;
+                        const _gtt=(_opRenderNow-g.born)/g.life;
+                        if(_gtt>=1) continue;
+                        const _gfi=Math.min(1,(_opRenderNow-g.born)/100);
+                        ctx.save();
+                        ctx.globalAlpha=Math.max(0,_gfi*(1-_gtt)*0.5*_opSpdFade);
+                        ctx.imageSmoothingEnabled=false;
+                        ctx.translate(g.wx-player.xPos,g.wy-player.yPos-pivY);
+                        ctx.rotate(g.dir*Math.PI/180);
+                        ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
+                        ctx.restore();
+                    }}
+                }
                 // Second chance glow for other player
                 {const _opScRem2=op.sc_rem>0?Math.max(0,op.sc_rem-(_opRenderNow-op.sc_ts)):0;
                 if(_opScRem2>0){
@@ -4773,16 +4812,20 @@ Promise.all([
                     ctx.fillStyle=_opSgrd;ctx.fillRect(sx-155,sy-165,310,330);
                     ctx.restore();
                 }}
-                // Shadow
-                ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
-                ctx.translate(sx-sOff,sy+sOff-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
-                ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
-                ctx.restore();
-                // Car texture
-                ctx.save();ctx.imageSmoothingEnabled=false;
-                ctx.translate(sx,sy-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
-                ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
-                ctx.restore();
+                
+                if(opSk){
+                    const opW=opSk.sw*SKIN_SCALE;
+                    // Shadow
+                    ctx.save();ctx.globalAlpha=50/255;ctx.filter='brightness(0)';ctx.imageSmoothingEnabled=false;
+                    ctx.translate(sx-sOff,sy+sOff-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
+                    ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
+                    ctx.restore();
+                    // Car texture
+                    ctx.save();ctx.imageSmoothingEnabled=false;
+                    ctx.translate(sx,sy-pivY);ctx.rotate(dir);ctx.scale(bsX,bsY);
+                    ctx.drawImage(carImg,opSk.sx,0,opSk.sw,SKIN_H,-opW/2,-opH/2,opW,opH);
+                    ctx.restore();
+                }
                 // Name label
                 if(op.username){
                     const nm=op.username.toUpperCase();
