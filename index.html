@@ -649,11 +649,12 @@ let mouseJustPressed=false,mouseDown=false,mouseJustReleased=false;
 let rightMouseDown=false,rightMouseJustPressed=false;
 let shiftJustPressed=false,shiftWasDown=false;
 let mobileControls=localStorage.getItem('mobileControls')==='1';
+let showParticles=localStorage.getItem('icedrift_particles')!=='0';
+let showScreenShake=localStorage.getItem('icedrift_screenshake')!=='0';
+let showEdgeGlow=localStorage.getItem('icedrift_edgeglow')!=='0';
 let aimTouchId=null,boostTouchId=null;
 function getMobBoostRect(){return{x:30,y:SCREEN_HEIGHT-150,w:120,h:120};};
 let showHitboxes=false;
-let adminInvincibility=false,adminWallphase=false;
-let adminInvisibility=false,adminFullInvisibility=false;
 // Auth state
 const DEVELOPERS=['nachofrenchfry'];
 const ADMINS=['cookery','TheCurseKing','notantanthonyyt'];
@@ -684,7 +685,7 @@ const TALENT_COUNT=88,LEVELS_PER_BRANCH=8;
 const BTN_SIZE=100,BTN_GAP=20,BTN_STEP=120;
 const START_BUTTON_WIDTH=200,START_BUTTON_HEIGHT=100;
 const LEVEL_BUTTON_SIZE=100,LEVEL_BUTTON_GAP=20;
-const SKINS=[{name:'DEFAULT',price:0,sx:0,sw:15},{name:'Y2K',price:500,sx:31,sw:15},{name:'SKATEBOARD',price:1000,sx:15,sw:16},{name:'ANT MOBILE',price:5000,sx:46,sw:17},{name:'SIRACHA',price:6000,sx:88,sw:16},{name:'DEV SKIN',price:0,sx:63,sw:25,exclusive:['nachofrenchfry','bbb']}];
+const SKINS=[{name:'DEFAULT',price:0,sx:0,sw:15},{name:'Y2K',price:500,sx:31,sw:15},{name:'SKATEBOARD',price:1000,sx:15,sw:16},{name:'IGNITION',price:1500,sx:129,sw:15},{name:'ANT MOBILE',price:5000,sx:46,sw:17},{name:'SIRACHA',price:6000,sx:88,sw:16},{name:'DEV SKIN',price:0,sx:63,sw:25,exclusive:['nachofrenchfry','bbb']},{name:'COOKIE',price:0,sx:104,sw:25,exclusive:['nachofrenchfry','bbb','cookery']}];
 const ADMIN_COMMANDS=[
     {cmd:'/givedriftcoins',   args:'[USER] [AMOUNT]',  desc:'GIVE DC'},
     {cmd:'/givetalentpoints', args:'[USER] [AMOUNT]',  desc:'GIVE TP'},
@@ -694,15 +695,10 @@ const ADMIN_COMMANDS=[
     {cmd:'/resetdriftcoins',  args:'[USER]',            desc:'RESET DC TO 0'},
     {cmd:'/resettalentpoints',args:'[USER]',            desc:'RESET TP TO 0'},
     {cmd:'/mute',             args:'[USER] [SECONDS]', desc:'MUTE USER'},
-    {cmd:'/unmute',           args:'[USER]',            desc:'UNMUTE USER'},
     {cmd:'/password',         args:'[USER]',            desc:'ACCOUNT INFO'},
     {cmd:'/driftcoins',       args:'[USER]',            desc:'CHECK DC'},
     {cmd:'/talentpoints',     args:'[USER]',            desc:'CHECK TP'},
     {cmd:'/besttime',         args:'[USER] [LEVEL]',    desc:'BEST TIME'},
-    {cmd:'/invincibility',    args:'',                  desc:'TOGGLE INVINCIBILITY'},
-    {cmd:'/invisibility',     args:'',                  desc:'TOGGLE INVISIBILITY'},
-    {cmd:'/fullinvisibility', args:'',                  desc:'TOGGLE FULL INVISIBILITY'},
-    {cmd:'/wallphase',        args:'',                  desc:'TOGGLE WALLPHASE'},
 ];
 const SKIN_H=28,SKIN_SCALE=3;
 const BRANCH_X_WORLD=[300,750,1200,1450,1750,2050,550,2350,2650,900,2950];
@@ -729,7 +725,7 @@ let ownedSkins=(()=>{try{const o=JSON.parse(localStorage.getItem('icedrift_owned
 let shopTab=0;
 let talentPurchased=new Array(TALENT_COUNT).fill(false);
 let visionScale=1.0,accelerationMult=1.0,reloadCooldownMult=1.0;
-let speedTileEnd=0,speedGlowStart=0;
+let speedTileEnd=0,speedGlowStart=0,levelHasKillBlocks=false;
 let checkpointX=null,checkpointY=null;
 let cullMarginX=0,cullMarginY=0;
 let boostUnlocked=false,boostLevel=0,boostCooldownEnd=0,boostCooldownTotal=1,boostStretchStart=-Infinity;
@@ -746,11 +742,11 @@ let secondChanceTotalDuration=1,secondChanceImmunityTotal=1;
 let boostOverriding=false;
 let particles=[],iceParticleAccum=0,prevIceVelX=0,prevIceVelY=0;
 let ghostTrail=[],ghostTrailLastRecord=0;
-let _prevCursor='default',_sc2Pfx=0,_spdPfx=0;
+let _prevCursor='default',_sc2Pfx=0,_spdPfx=0,_cpPfx=0;
 let chatHistory=[],chatHistoryScroll=0,chatHistTouchId=null,chatHistTouchStartY=0,chatHistTouchStartScroll=0;
 let shopScroll=0,settingsScroll=0;
 let lobbyPfxQueue=[],_lobbyDrift=null;
-let killGlowEnd=0,killGlowDur=600,screenShakeEnd=0,screenShakeDur=500,screenShakeMaxAmt=10;
+let killGlowEnd=0,killGlowStart=0,killGlowDur=600,screenShakeEnd=0,screenShakeDur=500,screenShakeMaxAmt=10;
 let countdownGoEnd=0;
 let lobbyChannel=null,otherPlayers={},lastLobbyBroadcast=0,lobbyLoaded=false;
 let raceState='menu',raceMode='random';
@@ -1271,7 +1267,7 @@ class Car {
             hb.x+=signX;
             for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
                 const t=tiles[i][j];
-                if(!t.active || adminWallphase) continue;
+                if(!t.active) continue;
                 if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) xHit=true;
                 if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){xHit=true;sweepKillHit=true;}
             }
@@ -1281,7 +1277,7 @@ class Car {
             hb.y+=signY;
             for(let i=0;i<TILE_GRID_HEIGHT;i++) for(let j=0;j<TILE_GRID_WIDTH;j++){
                 const t=tiles[i][j];
-                if(!t.active || adminWallphase) continue;
+                if(!t.active) continue;
                 if((t.type==="WALL"||t.type==="START_WALL")&&hasIntersection(hb,t.hitbox)) yHit=true;
                 if(t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){yHit=true;sweepKillHit=true;}
             }
@@ -1335,11 +1331,11 @@ class Car {
             if(!_isCheckpointRespawn) for(let r=0;r<TILE_GRID_HEIGHT;r++) for(let c=0;c<TILE_GRID_WIDTH;c++)
                 if(tiles[r][c].type==="START_WALL") tiles[r][c].active=true;
         };
-        const _pnow=performance.now();const doDmgCheck=(!evasionUnlocked||_pnow>=evasionDmgCheckEnd) && !adminInvincibility && !adminWallphase;if(doDmgCheck&&evasionUnlocked)evasionDmgCheckEnd=_pnow+1000;
+        const _pnow=performance.now();const doDmgCheck=!evasionUnlocked||_pnow>=evasionDmgCheckEnd;if(doDmgCheck&&evasionUnlocked)evasionDmgCheckEnd=_pnow+1000;
         let killBlockHit=false;
         for(let i=0;i<TILE_GRID_HEIGHT&&!killBlockHit;i++) for(let j=0;j<TILE_GRID_WIDTH&&!killBlockHit;j++){
             const t=tiles[i][j];
-            if(t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)&&!adminWallphase){
+            if(t.active&&t.type==="KILL_BLOCK"&&hasIntersection(hb,t.hitbox)){
                 killBlockHit=true;
                 if(doDmgCheck){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
@@ -1352,7 +1348,7 @@ class Car {
                     secondChanceTotalDuration=scCD;
                 }else if(!secondChanceImmune){const EC=[0,.10,.20,.30,.40,.50];if(evasionUnlocked&&performance.now()>=evasionCooldownEnd&&Math.random()<(EC[Math.min(evasionLevel,5)])){evasionCooldownEnd=performance.now()+1500;}else{resetCar();}}
                 }
-                if(secondChanceImmune || adminInvincibility){
+                if(secondChanceImmune){
                     const inter=rectIntersect(hb,t.hitbox);
                     if(inter){
                         if(inter.w<=inter.h){
@@ -1366,7 +1362,7 @@ class Car {
                 }
             }
         }
-        if(!killBlockHit&&sweepKillHit&&!adminWallphase){
+        if(!killBlockHit&&sweepKillHit){
             killBlockHit=true;
             if(doDmgCheck){
             if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
@@ -1393,7 +1389,7 @@ class Car {
                         else allVoid=false;
                     } else { allVoid=false; }
                 }
-            if(((anyVoid&&allVoid)||!anyActiveTile) && !adminWallphase){
+            if((anyVoid&&allVoid)||!anyActiveTile){
                 if(doDmgCheck){
                 if(secondChanceUnlocked&&!secondChanceImmune&&performance.now()>=secondChanceCooldownEnd){
                     secondChanceImmune=true;
@@ -1410,7 +1406,7 @@ class Car {
 
         // Friction
         const onGrass=anyGrass&&allGrass;
-        const ff=adminWallphase?FRICTION:(onGrass?0.91:onIce?FRICTION:0.9);
+        const ff=onGrass?0.91:onIce?FRICTION:0.9;
         this.xVel*=Math.pow(ff,dt); this.yVel*=Math.pow(ff,dt);
         if(Math.abs(this.xVel)<0.05) this.xVel=0;
         if(Math.abs(this.yVel)<0.05) this.yVel=0;
@@ -1435,20 +1431,18 @@ class Car {
 
         // Pushout pass (resolve wall penetration using new position)
         const cHB={x:SCREEN_WM-Math.floor(CAR_WIDTH/2),y:SCREEN_HM-Math.floor(CAR_HEIGHT/2),w:50,h:50};
-        if(!adminWallphase) {
-            for(let pi=0;pi<TILE_GRID_HEIGHT;pi++) for(let pj=0;pj<TILE_GRID_WIDTH;pj++){
-                const t=tiles[pi][pj];
-                if(!t.active||(t.type!=="WALL"&&t.type!=="START_WALL"&&!((secondChanceImmune||adminInvincibility)&&t.type==="KILL_BLOCK"))) continue;
-                const tHB={x:t.initialX-Math.floor(this.xPos),y:t.initialY-Math.floor(this.yPos),w:TILE_SIZE,h:TILE_SIZE};
-                const inter=rectIntersect(cHB,tHB);
-                if(inter){
-                    if(inter.w<=inter.h){
-                        if(cHB.x<tHB.x){this.xPos-=inter.w;if(this.xVel>0)this.xVel=0;}
-                        else{this.xPos+=inter.w;if(this.xVel<0)this.xVel=0;}
-                    }else{
-                        if(cHB.y<tHB.y){this.yPos-=inter.h;if(this.yVel>0)this.yVel=0;}
-                        else{this.yPos+=inter.h;if(this.yVel<0)this.yVel=0;}
-                    }
+        for(let pi=0;pi<TILE_GRID_HEIGHT;pi++) for(let pj=0;pj<TILE_GRID_WIDTH;pj++){
+            const t=tiles[pi][pj];
+            if(!t.active||t.type!=="WALL"&&t.type!=="START_WALL"&&!(secondChanceImmune&&t.type==="KILL_BLOCK")) continue;
+            const tHB={x:t.initialX-Math.floor(this.xPos),y:t.initialY-Math.floor(this.yPos),w:TILE_SIZE,h:TILE_SIZE};
+            const inter=rectIntersect(cHB,tHB);
+            if(inter){
+                if(inter.w<=inter.h){
+                    if(cHB.x<tHB.x){this.xPos-=inter.w;if(this.xVel>0)this.xVel=0;}
+                    else{this.xPos+=inter.w;if(this.xVel<0)this.xVel=0;}
+                }else{
+                    if(cHB.y<tHB.y){this.yPos-=inter.h;if(this.yVel>0)this.yVel=0;}
+                    else{this.yPos+=inter.h;if(this.yVel<0)this.yVel=0;}
                 }
             }
         }
@@ -1517,25 +1511,23 @@ class Car {
         const bsT=Math.min((performance.now()-boostStretchStart)/500,1);
         const bsVal=bsT<1?Math.exp(-3.5*bsT)*Math.cos(2.2*Math.PI*bsT):0;
         const bsX=(1-0.35*bsVal),bsY=(1+0.45*bsVal);
-        if(!adminInvisibility && !adminFullInvisibility) {
-            ctx.save();
-            ctx.globalAlpha=50/255;
-            ctx.filter='brightness(0)';
-            ctx.imageSmoothingEnabled=false;
-            ctx.translate(SCREEN_WM-sOff,SCREEN_HM+sOff-pivY);
-            ctx.rotate(this.drawDir*Math.PI/180);
-            ctx.scale(bsX,bsY);
-            ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
-            ctx.restore();
-            ctx.save();
-            ctx.imageSmoothingEnabled=false;
-            ctx.translate(SCREEN_WM,SCREEN_HM-pivY);
-            ctx.rotate(this.drawDir*Math.PI/180);
-            ctx.scale(bsX,bsY);
-            ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
-            ctx.restore();
-        }
-        if(showHitboxes && !adminFullInvisibility){
+        ctx.save();
+        ctx.globalAlpha=50/255;
+        ctx.filter='brightness(0)';
+        ctx.imageSmoothingEnabled=false;
+        ctx.translate(SCREEN_WM-sOff,SCREEN_HM+sOff-pivY);
+        ctx.rotate(this.drawDir*Math.PI/180);
+        ctx.scale(bsX,bsY);
+        ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
+        ctx.restore();
+        ctx.save();
+        ctx.imageSmoothingEnabled=false;
+        ctx.translate(SCREEN_WM,SCREEN_HM-pivY);
+        ctx.rotate(this.drawDir*Math.PI/180);
+        ctx.scale(bsX,bsY);
+        ctx.drawImage(carImg,sk.sx,0,sk.sw,SKIN_H,-rW/2,-rH/2,rW,rH);
+        ctx.restore();
+        if(showHitboxes){
             const hb=this.hitbox;
             ctx.strokeStyle='rgb(255,0,0)';
             ctx.strokeRect(hb.x,hb.y,hb.w,hb.h);
@@ -2306,11 +2298,6 @@ async function execAdminCommand(raw){
         if(!user||isNaN(secs)){adminLocalMsg('Usage: /mute [user] [seconds]');return;}
         const{data,error}=await db.rpc('admin_mute_user',{p_target:user,p_seconds:secs,p_admin:currentUsername,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
-    }else if(cmd==='/unmute'){
-        const[,user]=parts;
-        if(!user){adminLocalMsg('Usage: /unmute [user]');return;}
-        const{data,error}=await db.rpc('admin_mute_user',{p_target:user,p_seconds:0,p_admin:currentUsername,p_caller_id:currentUser.id});
-        adminLocalMsg(error?'ERR: '+error.message:data);
     }else if(cmd==='/password'){
         const[,user]=parts;
         if(!user){adminLocalMsg('Usage: /password [user]');return;}
@@ -2331,18 +2318,6 @@ async function execAdminCommand(raw){
         if(!user||isNaN(lvl)||lvl<1||lvl>5){adminLocalMsg('Usage: /besttime [user] [1-5]');return;}
         const{data,error}=await db.rpc('admin_get_besttime',{p_target:user,p_level:lvl-1,p_caller_id:currentUser.id});
         adminLocalMsg(error?'ERR: '+error.message:data);
-    }else if(cmd==='/invincibility'){
-        adminInvincibility=!adminInvincibility;
-        adminLocalMsg('INVINCIBILITY '+(adminInvincibility?'ON':'OFF'));
-    }else if(cmd==='/invisibility'){
-        adminInvisibility=!adminInvisibility;
-        adminLocalMsg('INVISIBILITY '+(adminInvisibility?'ON':'OFF'));
-    }else if(cmd==='/fullinvisibility'){
-        adminFullInvisibility=!adminFullInvisibility;
-        adminLocalMsg('FULL INVISIBILITY '+(adminFullInvisibility?'ON':'OFF'));
-    }else if(cmd==='/wallphase'){
-        adminWallphase=!adminWallphase;
-        adminLocalMsg('WALLPHASE '+(adminWallphase?'ON':'OFF'));
     }else{
         adminLocalMsg('Unknown command: '+cmd);
     }
@@ -2501,6 +2476,13 @@ document.addEventListener('wheel',e=>{
 },{passive:true});
 
 const UPDATE_LOG=[
+    {date:'JUNE 3RD 2026',lines:[
+        '- Added Visuals tab in Settings: toggle Particles,',
+        '  Screen Shake, and Edge Glow independently.',
+        '- Kill block hit now fades the red vignette in and out smoothly.',
+        '- Added Cookie skin (cookery).',
+        '- Added Ignition skin (1500 DC).',
+    ]},
     {date:'JUNE 1ST 2026',lines:[
         '- Added Multiplayer Racing. Race a random opponent and',
         '  wager 10% of each other\'s DC and TP. Map is selected',
@@ -2886,6 +2868,7 @@ Promise.all([
         for(let i=0;i<TILE_GRID_HEIGHT;i++)
             for(let j=0;j<TILE_GRID_WIDTH;j++)
                 doSetTile(i,j);
+        levelHasKillBlocks=LEVEL_MAPS[currentLevel].some(row=>row.includes(6));
     }
 
     function loadLobbyLevel(){
@@ -2910,6 +2893,7 @@ Promise.all([
         for(let i=0;i<TILE_GRID_HEIGHT;i++)
             for(let j=0;j<TILE_GRID_WIDTH;j++)
                 doSetTile(i,j);
+        levelHasKillBlocks=LEVEL_LOBBY.some(row=>row.includes(6));
     }
     function applyStartWallActivate(){
         for(let i=0;i<TILE_GRID_HEIGHT;i++)
@@ -3519,7 +3503,7 @@ Promise.all([
             renderText(ctx,textSheet,stTitle,Math.floor(SCREEN_WM-stTitleW/2),40,2,0,0,0);
 
             // Tabs
-            {const stTabs=['GENERAL','CONTROLS'],tabGap=14,tabH=80,tabY=110;
+            {const stTabs=['GENERAL','CONTROLS','VISUALS'],tabGap=14,tabH=80,tabY=110;
             const autoW=lbl=>lbl.length*(4*3*2+3)+60;
             const tabWidths=stTabs.map(autoW);
             const tabsTotal=tabWidths.reduce((a,b)=>a+b,0)+tabGap*(stTabs.length-1);
@@ -3592,6 +3576,24 @@ Promise.all([
                     mobileControls=!mobileControls;
                     localStorage.setItem('mobileControls',mobileControls?'1':'0');
                 }
+            } else if(settingsTab===2){
+                settingsScroll=0;
+                const _vBtnW=('ON').length*(4*3*2+3)+60,_vBtnH=80,_vGap=24,_vSy0=contentTop+30;
+                {const _lbl='SHOW PARTICLES',_lW=_lbl.length*(4*3+3),_tw=_lW+_vGap+_vBtnW;
+                const _lx=Math.floor(SCREEN_WM-_tw/2),_bx=_lx+_lW+_vGap,_ry=_vSy0;
+                renderText(ctx,textSheet,_lbl,_lx,_ry+22,1,80,80,80);
+                renderTextButton(ctx,showParticles?btnSheet:bwBtnSheet,textSheet,0,_bx,_ry,_vBtnW,showParticles?'ON':'OFF',0,0,0);
+                if(mjp&&inRect(mouseX,mouseY,_bx,_ry,_vBtnW,_vBtnH)){showParticles=!showParticles;localStorage.setItem('icedrift_particles',showParticles?'1':'0');}}
+                {const _lbl='SCREEN SHAKE',_lW=_lbl.length*(4*3+3),_tw=_lW+_vGap+_vBtnW;
+                const _lx=Math.floor(SCREEN_WM-_tw/2),_bx=_lx+_lW+_vGap,_ry=_vSy0+rowGap;
+                renderText(ctx,textSheet,_lbl,_lx,_ry+22,1,80,80,80);
+                renderTextButton(ctx,showScreenShake?btnSheet:bwBtnSheet,textSheet,0,_bx,_ry,_vBtnW,showScreenShake?'ON':'OFF',0,0,0);
+                if(mjp&&inRect(mouseX,mouseY,_bx,_ry,_vBtnW,_vBtnH)){showScreenShake=!showScreenShake;localStorage.setItem('icedrift_screenshake',showScreenShake?'1':'0');}}
+                {const _lbl='EDGE GLOW',_lW=_lbl.length*(4*3+3),_tw=_lW+_vGap+_vBtnW;
+                const _lx=Math.floor(SCREEN_WM-_tw/2),_bx=_lx+_lW+_vGap,_ry=_vSy0+rowGap*2;
+                renderText(ctx,textSheet,_lbl,_lx,_ry+22,1,80,80,80);
+                renderTextButton(ctx,showEdgeGlow?btnSheet:bwBtnSheet,textSheet,0,_bx,_ry,_vBtnW,showEdgeGlow?'ON':'OFF',0,0,0);
+                if(mjp&&inRect(mouseX,mouseY,_bx,_ry,_vBtnW,_vBtnH)){showEdgeGlow=!showEdgeGlow;localStorage.setItem('icedrift_edgeglow',showEdgeGlow?'1':'0');}}
             }
             ctx.restore();}
 
@@ -3859,7 +3861,7 @@ Promise.all([
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
             {const _gspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _gnow=performance.now();
-            if(_gspd>20 && !adminFullInvisibility){
+            if(_gspd>20){
                 const _gl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
                 const _gdx=_gl?player.xPos-_gl.wx:999,_gdy=_gl?player.yPos-_gl.wy:999;
                 if(_gdx*_gdx+_gdy*_gdy>22*22){
@@ -3875,7 +3877,7 @@ Promise.all([
                 driftFactor=cross;
             }
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
-            if(driftFactor>0.02&&spd>0.3 && !adminFullInvisibility){
+            if(driftFactor>0.02&&spd>0.3){
                 iceParticleAccum+=dt*driftFactor*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
@@ -3896,7 +3898,7 @@ Promise.all([
                 }
             }}
             {const pnow=performance.now();
-            if(player.lastWallHit && !adminFullInvisibility){
+            if(player.lastWallHit){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
                 const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
@@ -3910,17 +3912,18 @@ Promise.all([
                         born:pnow,life:200+Math.random()*200,size:3+Math.random()*4,wall:true,rot:Math.random()*Math.PI*2,bright:Math.random()});
                 }
             }
-            if(player.lastKillHit && !adminFullInvisibility){
+            if(player.lastKillHit){
                 for(let i=0;i<50;i++){
                     const a=Math.random()*Math.PI*2,kSpd=3+Math.random()*9;
                     particles.push({wx:prevPX+(Math.random()-0.5)*10,wy:prevPY+(Math.random()-0.5)*10,
                         vx:Math.cos(a)*kSpd,vy:Math.sin(a)*kSpd,
                         born:pnow,life:300+Math.random()*300,size:3+Math.random()*5,kill:true,rot:Math.random()*Math.PI*2,bright:Math.random()});
                 }
+                if(pnow>=killGlowEnd)killGlowStart=pnow;
                 killGlowEnd=pnow+600;killGlowDur=600;
-                screenShakeEnd=pnow+500;screenShakeDur=500;
+                if(showScreenShake){screenShakeEnd=pnow+500;screenShakeDur=500;}
             }
-            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25 && !adminFullInvisibility){
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
                 _sc2Pfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
@@ -3931,7 +3934,7 @@ Promise.all([
                         finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
                 }
             }
-            if(pnow<speedTileEnd&&pnow-_spdPfx>25 && !adminFullInvisibility){
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
                 _spdPfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
@@ -3941,9 +3944,27 @@ Promise.all([
                         born:pnow,life:350+Math.random()*350,size:2+Math.random()*6,
                         finish:true,r:_grn?0:180,g:255,b:_grn?Math.floor(80+Math.random()*80):255,rot:Math.random()*Math.PI*2});
                 }
+            }
+            if(pnow-_cpPfx>25){
+                _cpPfx=pnow;
+                for(let _cpi=0;_cpi<TILE_GRID_HEIGHT;_cpi++) for(let _cpj=0;_cpj<TILE_GRID_WIDTH;_cpj++){
+                    const _cpt=tiles[_cpi][_cpj];
+                    if(!_cpt.active||_cpt.type!=='CHECKPOINT') continue;
+                    const _cph=_cpt.hitbox;
+                    if(_cph.x<-_cph.w-cullMarginX||_cph.y<-_cph.h-cullMarginY||_cph.x>SCREEN_WIDTH+cullMarginX||_cph.y>SCREEN_HEIGHT+cullMarginY) continue;
+                    const _cpwx=player.xPos+_cph.x+_cph.w/2,_cpwy=player.yPos+_cph.y+_cph.h/2;
+                    for(let _cpp=0;_cpp<5;_cpp++){
+                        const _cpvx=(Math.random()-0.5)*0.9;
+                        const _cpvy=-0.5-Math.random()*2.0;
+                        particles.push({wx:_cpwx+(Math.random()-0.5)*_cph.w*0.7,wy:_cpwy+(Math.random()-0.5)*_cph.h*0.7,
+                            vx:_cpvx,vy:_cpvy,born:pnow,life:400+Math.random()*450,size:2+Math.random()*6,
+                            finish:true,r:255,g:Math.floor(185+Math.random()*35),b:0,
+                            rot:Math.random()*Math.PI*2});
+                    }
+                }
             }}
             // Dev skin always-on effects (nachofrenchfry only)
-            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive && !adminFullInvisibility){
+            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.name==='DEV SKIN'){
                 const _devNow=performance.now();
                 const _da=player.drawDir*Math.PI/180,_dc=Math.cos(_da),_ds=Math.sin(_da);
                 const _cwx=player.xPos+SCREEN_WM,_cwy=player.yPos+SCREEN_HM-10;
@@ -3978,7 +3999,7 @@ Promise.all([
                             born:_rPnow,life:300+Math.random()*350,size:4+Math.random()*6,ice:true,rot:Math.random()*Math.PI*2,bright:Math.random()});
                     }
                 } else {raceOppIceAccum=0;}
-                if(SKINS[raceOpponent.skin]?.exclusive&&(raceOpponent.username||'').toLowerCase()==='nachofrenchfry'&&_rPnow-raceOppDevPfx>25){
+                if(SKINS[raceOpponent.skin]?.name==='DEV SKIN'&&(raceOpponent.username||'').toLowerCase()==='nachofrenchfry'&&_rPnow-raceOppDevPfx>25){
                     raceOppDevPfx=_rPnow;
                     const _oda=(raceOppDir*Math.PI/180),_odc=Math.cos(_oda),_ods=Math.sin(_oda);
                     const _ocx=raceOppX,_ocy=raceOppY-10;
@@ -4005,7 +4026,7 @@ Promise.all([
             cullMarginX=Math.max(0,SCREEN_WM*(1/visionScale-1));
             cullMarginY=Math.max(0,SCREEN_HM*(1/visionScale-1));
             ctx.fillStyle='rgb(0,0,0)';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
-            {const _st=Math.max(0,(screenShakeEnd-performance.now())/screenShakeDur);
+            {const _st=showScreenShake?Math.max(0,(screenShakeEnd-performance.now())/screenShakeDur):0;
             const _sa=_st*screenShakeMaxAmt;
             const _sx=_sa?(Math.random()*2-1)*_sa:0,_sy=_sa?(Math.random()*2-1)*_sa:0;
             ctx.save();ctx.translate(SCREEN_WM+_sx,SCREEN_HM+_sy);}
@@ -4015,6 +4036,20 @@ Promise.all([
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].renderGround(ctx,sheet,showHitboxes);
+            // Checkpoint glow
+            {const _cgNow=performance.now(),_cgP=0.22+Math.sin(_cgNow*0.004)*0.07;
+            for(let _cgi=0;_cgi<TILE_GRID_HEIGHT;_cgi++) for(let _cgj=0;_cgj<TILE_GRID_WIDTH;_cgj++){
+                const _cgt=tiles[_cgi][_cgj];
+                if(!_cgt.active||_cgt.type!=='CHECKPOINT') continue;
+                const _cgh=_cgt.hitbox;
+                if(_cgh.x<-_cgh.w-cullMarginX||_cgh.y<-_cgh.h-cullMarginY||_cgh.x>SCREEN_WIDTH+cullMarginX||_cgh.y>SCREEN_HEIGHT+cullMarginY) continue;
+                const _cgcx=Math.round(_cgh.x+_cgh.w/2),_cgcy=Math.round(_cgh.y+_cgh.h/2),_cgr=_cgh.w*1.8;
+                const _cgrd=ctx.createRadialGradient(_cgcx,_cgcy,2,_cgcx,_cgcy,_cgr);
+                _cgrd.addColorStop(0,`rgba(255,200,0,${(_cgP*1.3).toFixed(3)})`);
+                _cgrd.addColorStop(0.5,`rgba(255,170,0,${_cgP.toFixed(3)})`);
+                _cgrd.addColorStop(1,'rgba(255,140,0,0)');
+                ctx.fillStyle=_cgrd;ctx.fillRect(_cgh.x-_cgh.w*0.8,_cgh.y-_cgh.h*0.8,_cgh.w*2.6,_cgh.h*2.6);
+            }}
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].renderShadow(ctx);
@@ -4029,6 +4064,20 @@ Promise.all([
                         ctx.fillRect(Math.round(hb.x)+hb.w-10,Math.round(hb.y)+hb.h,10,10);
                 }
             ctx.restore();}
+            // Kill block radial glow (behind tiles)
+            {const _kgNow=performance.now(),_kgP=0.09+Math.sin(_kgNow*0.004)*0.03;
+            for(let _ki=0;_ki<TILE_GRID_HEIGHT;_ki++) for(let _kj=0;_kj<TILE_GRID_WIDTH;_kj++){
+                const _ktile=tiles[_ki][_kj];
+                if(!_ktile.active||_ktile.type!=='KILL_BLOCK') continue;
+                const _kh=_ktile.hitbox;
+                if(_kh.x<-_kh.w-cullMarginX||_kh.y<-_kh.h-cullMarginY||_kh.x>SCREEN_WIDTH+cullMarginX||_kh.y>SCREEN_HEIGHT+cullMarginY) continue;
+                const _kcx=Math.round(_kh.x+_kh.w/2),_kcy=Math.round(_kh.y+_kh.h/2),_kr=_kh.w*1.8;
+                const _grd=ctx.createRadialGradient(_kcx,_kcy,2,_kcx,_kcy,_kr);
+                _grd.addColorStop(0,`rgba(255,20,0,${(_kgP*1.4).toFixed(3)})`);
+                _grd.addColorStop(0.5,`rgba(255,0,0,${_kgP.toFixed(3)})`);
+                _grd.addColorStop(1,'rgba(255,0,0,0)');
+                ctx.fillStyle=_grd;ctx.fillRect(_kh.x-_kh.w*0.8,_kh.y-_kh.h*0.8,_kh.w*2.6,_kh.h*2.6);
+            }}
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].render(ctx,sheet,showHitboxes);
@@ -4041,6 +4090,7 @@ Promise.all([
                 p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 const sx=p.wx-player.xPos,sy=p.wy-player.yPos;
+                if(!showParticles) continue;
                 ctx.save();
                 if(p.ice||p.wall||p.kill||p.finish){
                     ctx.globalAlpha=Math.pow(1-t,1.5)*0.95;
@@ -4051,7 +4101,6 @@ Promise.all([
                     let r,g,b;
                     if(p.finish){r=p.r;g=p.g;b=p.b;}
                     else if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
-                    else if(p.kill){r=255;g=Math.floor(30+br*80);b=0;}
                     else if(p.grass){r=Math.floor(30+br*90);g=Math.floor(130+br*110);b=Math.floor(20+br*50);}
                     else{r=Math.floor((15+br*195)*(1-t*0.3));g=Math.floor((60+br*170)*(1-t*0.1));b=255;}
                     ctx.fillStyle=`rgb(${r},${g},${b})`;
@@ -4076,7 +4125,6 @@ Promise.all([
             const _gnow2=performance.now();
             const _curSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _spdFade=Math.max(0,Math.min(1,(_curSpd-18)/6));
-            if(!adminFullInvisibility) {
             for(const g of ghostTrail){
                 const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
                 if(_dx*_dx+_dy*_dy<28*28) continue;
@@ -4091,9 +4139,8 @@ Promise.all([
                 ctx.drawImage(carImg,_sk.sx,0,_sk.sw,SKIN_H,-_rW/2,-_rH/2,_rW,_rH);
                 ctx.restore();
             }}
-            }
             // Second chance golden aura (fade in/out only, no pulse)
-            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd && !adminFullInvisibility){
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
                 const _sNow=performance.now();
                 const _scEl=_sNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
                 const _scRem=secondChanceImmunityEnd-_sNow;
@@ -4108,7 +4155,7 @@ Promise.all([
                 ctx.restore();
             }
             // Speed tile player aura (fade in/out only, no pulse)
-            if(performance.now()<speedTileEnd && !adminFullInvisibility){
+            if(performance.now()<speedTileEnd){
                 const _sn=performance.now(),_sel=_sn-speedGlowStart,_srem=speedTileEnd-_sn;
                 const _sfa=Math.min(1,_sel/300)*Math.min(1,_srem/300);
                 ctx.save();
@@ -4160,6 +4207,14 @@ Promise.all([
             }
             player.render(ctx,carImg,showHitboxes);
             ctx.restore();
+            if(showEdgeGlow&&levelHasKillBlocks){
+                const _akNow=performance.now(),_akP=0.18+Math.sin(_akNow*0.003)*0.05;
+                const _akGrd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,0,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.75);
+                _akGrd.addColorStop(0,'rgba(255,0,0,0)');
+                _akGrd.addColorStop(0.5,`rgba(255,0,0,${(_akP*0.4).toFixed(3)})`);
+                _akGrd.addColorStop(1,`rgba(255,0,0,${_akP.toFixed(3)})`);
+                ctx.fillStyle=_akGrd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
+            }
 
             if(mobileControls&&boostUnlocked){
                 const mb=getMobBoostRect();
@@ -4263,7 +4318,7 @@ Promise.all([
             // Race: broadcast position + HUD
             if(page==='RACE_GAME'){
                 const _rnow=performance.now();
-                if(currentUser&&_rnow-raceLastBroadcast>50 && !adminFullInvisibility){
+                if(currentUser&&_rnow-raceLastBroadcast>50){
                     raceLastBroadcast=_rnow;
                     {const _rv=Math.hypot(player.xVel,player.yVel);
                     const _rda=player.drawDir*Math.PI/180;
@@ -4315,10 +4370,8 @@ Promise.all([
                 renderText(ctx,textSheet,hint,SCREEN_WIDTH-hw-12,SCREEN_HEIGHT-7*3-12,1,255,255,255);
                 ctx.restore();
             }
-            {const _now=performance.now();if(_now<speedTileEnd){
-                const _dur=speedTileEnd-speedGlowStart;
-                const _el=_now-speedGlowStart;
-                const _rem=speedTileEnd-_now;
+            if(showEdgeGlow){const _now=performance.now();if(_now<speedTileEnd){
+                const _el=_now-speedGlowStart,_rem=speedTileEnd-_now;
                 const _fa=Math.min(1,Math.min(_el/300,_rem/300));
                 const grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,Math.min(SCREEN_WIDTH,SCREEN_HEIGHT)*0.15,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.75);
                 grd.addColorStop(0,'rgba(0,255,80,0)');
@@ -4326,11 +4379,13 @@ Promise.all([
                 grd.addColorStop(1,`rgba(0,255,80,${(_fa*0.9).toFixed(2)})`);
                 ctx.fillStyle=grd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             }}
-            {const _kgt=performance.now();if(_kgt<killGlowEnd){
+            if(showEdgeGlow){const _kgt=performance.now();if(_kgt<killGlowEnd){
+                const _kel=_kgt-killGlowStart,_krem=killGlowEnd-_kgt;
+                const _kfa=Math.min(1,_kel/200)*Math.min(1,_krem/200);
                 const grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,Math.min(SCREEN_WIDTH,SCREEN_HEIGHT)*0.1,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.8);
                 grd.addColorStop(0,'rgba(255,0,0,0)');
-                grd.addColorStop(0.5,'rgba(255,0,0,0.45)');
-                grd.addColorStop(1,'rgba(255,0,0,0.8)');
+                grd.addColorStop(0.5,`rgba(255,0,0,${(0.45*_kfa).toFixed(2)})`);
+                grd.addColorStop(1,`rgba(255,0,0,${(0.8*_kfa).toFixed(2)})`);
                 ctx.fillStyle=grd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             }}
 
@@ -4362,7 +4417,7 @@ Promise.all([
             player.update(mouseX,mouseY,tiles,dt,sjp,rmp);
             {const _lgspd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _lgnow=performance.now();
-            if(_lgspd>20 && !adminFullInvisibility){
+            if(_lgspd>20){
                 const _lgl=ghostTrail.length>0?ghostTrail[ghostTrail.length-1]:null;
                 const _lgdx=_lgl?player.xPos-_lgl.wx:999,_lgdy=_lgl?player.yPos-_lgl.wy:999;
                 if(_lgdx*_lgdx+_lgdy*_lgdy>22*22)
@@ -4378,7 +4433,7 @@ Promise.all([
             }
             prevIceVelX=player.xVel;prevIceVelY=player.yVel;
             _lobbyDrift=(_ldf>0.02&&spd>0.3)?{factor:Math.min(1,_ldf),spd,vx:player.xVel/spd,vy:player.yVel/spd}:null;
-            if(_ldf>0.02&&spd>0.3 && !adminFullInvisibility){
+            if(_ldf>0.02&&spd>0.3){
                 iceParticleAccum+=dt*_ldf*spd*5;
                 const pnow=performance.now();
                 while(iceParticleAccum>=1){
@@ -4399,7 +4454,7 @@ Promise.all([
                 }
             }}
             {const pnow=performance.now();
-            if(player.lastWallHit && !adminFullInvisibility){
+            if(player.lastWallHit){
                 const wSpd=player.lastWallPreSpeed,nx=player.lastWallNX,ny=player.lastWallNY;
                 const cnt=Math.min(55,Math.floor(wSpd*2.5+10));
                 const cX=player.xPos+SCREEN_WM-nx*(CAR_HEIGHT*0.5);
@@ -4415,7 +4470,7 @@ Promise.all([
                 lobbyPfxQueue.push({t:'w',nx,ny,spd:wSpd});
             }}
             {const pnow=performance.now();
-            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25 && !adminFullInvisibility){
+            if(secondChanceImmune&&pnow<secondChanceImmunityEnd&&pnow-_sc2Pfx>25){
                 _sc2Pfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa2=Math.random()*Math.PI*2,_ss=1+Math.random()*4.5;
@@ -4426,7 +4481,7 @@ Promise.all([
                         finish:true,r:255,g:_gold?Math.floor(180+Math.random()*60):Math.floor(120+Math.random()*80),b:_gold?0:Math.floor(Math.random()*60),rot:Math.random()*Math.PI*2});
                 }
             }
-            if(pnow<speedTileEnd&&pnow-_spdPfx>25 && !adminFullInvisibility){
+            if(pnow<speedTileEnd&&pnow-_spdPfx>25){
                 _spdPfx=pnow;
                 for(let _si=0;_si<30;_si++){
                     const _sa3=Math.random()*Math.PI*2,_ss3=1+Math.random()*4;
@@ -4436,9 +4491,27 @@ Promise.all([
                         born:pnow,life:350+Math.random()*350,size:2+Math.random()*6,
                         finish:true,r:_grn?0:180,g:255,b:_grn?Math.floor(80+Math.random()*80):255,rot:Math.random()*Math.PI*2});
                 }
+            }
+            if(pnow-_cpPfx>25){
+                _cpPfx=pnow;
+                for(let _cpi=0;_cpi<TILE_GRID_HEIGHT;_cpi++) for(let _cpj=0;_cpj<TILE_GRID_WIDTH;_cpj++){
+                    const _cpt=tiles[_cpi][_cpj];
+                    if(!_cpt.active||_cpt.type!=='CHECKPOINT') continue;
+                    const _cph=_cpt.hitbox;
+                    if(_cph.x<-_cph.w-cullMarginX||_cph.y<-_cph.h-cullMarginY||_cph.x>SCREEN_WIDTH+cullMarginX||_cph.y>SCREEN_HEIGHT+cullMarginY) continue;
+                    const _cpwx=player.xPos+_cph.x+_cph.w/2,_cpwy=player.yPos+_cph.y+_cph.h/2;
+                    for(let _cpp=0;_cpp<5;_cpp++){
+                        const _cpvx=(Math.random()-0.5)*0.9;
+                        const _cpvy=-0.5-Math.random()*2.0;
+                        particles.push({wx:_cpwx+(Math.random()-0.5)*_cph.w*0.7,wy:_cpwy+(Math.random()-0.5)*_cph.h*0.7,
+                            vx:_cpvx,vy:_cpvy,born:pnow,life:400+Math.random()*450,size:2+Math.random()*6,
+                            finish:true,r:255,g:Math.floor(185+Math.random()*35),b:0,
+                            rot:Math.random()*Math.PI*2});
+                    }
+                }
             }}
             // Dev skin always-on effects (nachofrenchfry only, lobby)
-            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.exclusive && !adminFullInvisibility){
+            if(currentUsername?.toLowerCase()==='nachofrenchfry'&&SKINS[selectedSkin]?.name==='DEV SKIN'){
                 const _devNow=performance.now();
                 const _da=player.drawDir*Math.PI/180,_dc=Math.cos(_da),_ds=Math.sin(_da);
                 const _cwx=player.xPos+SCREEN_WM,_cwy=player.yPos+SCREEN_HM-10;
@@ -4518,7 +4591,7 @@ Promise.all([
                     }
                 }
                 // Dev skin corner sparks + fire trail for other players
-                if(SKINS[op.skin]?.exclusive&&(op.username||'').toLowerCase()==='nachofrenchfry'&&pnow-(op._devPfx||0)>25){
+                if(SKINS[op.skin]?.name==='DEV SKIN'&&(op.username||'').toLowerCase()==='nachofrenchfry'&&pnow-(op._devPfx||0)>25){
                     op._devPfx=pnow;
                     const _oda=((op.dir||270)*Math.PI/180),_odc=Math.cos(_oda),_ods=Math.sin(_oda);
                     const _ocx=op.x,_ocy=op.y-10;
@@ -4545,7 +4618,7 @@ Promise.all([
 
             // Broadcast own position
             {const now=performance.now();
-            if(currentUser&&now-lastLobbyBroadcast>50 && !adminFullInvisibility){
+            if(currentUser&&now-lastLobbyBroadcast>50){
                 lastLobbyBroadcast=now;
                 const _bsT=Math.min((now-boostStretchStart)/500,1);
                 const _bsVal=_bsT<1?Math.exp(-3.5*_bsT)*Math.cos(2.2*Math.PI*_bsT):0;
@@ -4570,6 +4643,20 @@ Promise.all([
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].renderGround(ctx,sheet,false);
+            // Checkpoint glow (lobby)
+            {const _cgNow=performance.now(),_cgP=0.22+Math.sin(_cgNow*0.004)*0.07;
+            for(let _cgi=0;_cgi<TILE_GRID_HEIGHT;_cgi++) for(let _cgj=0;_cgj<TILE_GRID_WIDTH;_cgj++){
+                const _cgt=tiles[_cgi][_cgj];
+                if(!_cgt.active||_cgt.type!=='CHECKPOINT') continue;
+                const _cgh=_cgt.hitbox;
+                if(_cgh.x<-_cgh.w-cullMarginX||_cgh.y<-_cgh.h-cullMarginY||_cgh.x>SCREEN_WIDTH+cullMarginX||_cgh.y>SCREEN_HEIGHT+cullMarginY) continue;
+                const _cgcx=Math.round(_cgh.x+_cgh.w/2),_cgcy=Math.round(_cgh.y+_cgh.h/2),_cgr=_cgh.w*1.8;
+                const _cgrd=ctx.createRadialGradient(_cgcx,_cgcy,2,_cgcx,_cgcy,_cgr);
+                _cgrd.addColorStop(0,`rgba(255,200,0,${(_cgP*1.3).toFixed(3)})`);
+                _cgrd.addColorStop(0.5,`rgba(255,170,0,${_cgP.toFixed(3)})`);
+                _cgrd.addColorStop(1,'rgba(255,140,0,0)');
+                ctx.fillStyle=_cgrd;ctx.fillRect(_cgh.x-_cgh.w*0.8,_cgh.y-_cgh.h*0.8,_cgh.w*2.6,_cgh.h*2.6);
+            }}
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].renderShadow(ctx);
@@ -4583,6 +4670,20 @@ Promise.all([
                         ctx.fillRect(Math.round(hb.x)+hb.w-10,Math.round(hb.y)+hb.h,10,10);
                 }
             ctx.restore();}
+            // Kill block radial glow (behind tiles, lobby)
+            {const _kgNow=performance.now(),_kgP=0.09+Math.sin(_kgNow*0.004)*0.03;
+            for(let _ki=0;_ki<TILE_GRID_HEIGHT;_ki++) for(let _kj=0;_kj<TILE_GRID_WIDTH;_kj++){
+                const _ktile=tiles[_ki][_kj];
+                if(!_ktile.active||_ktile.type!=='KILL_BLOCK') continue;
+                const _kh=_ktile.hitbox;
+                if(_kh.x<-_kh.w-cullMarginX||_kh.y<-_kh.h-cullMarginY||_kh.x>SCREEN_WIDTH+cullMarginX||_kh.y>SCREEN_HEIGHT+cullMarginY) continue;
+                const _kcx=Math.round(_kh.x+_kh.w/2),_kcy=Math.round(_kh.y+_kh.h/2),_kr=_kh.w*1.8;
+                const _grd=ctx.createRadialGradient(_kcx,_kcy,2,_kcx,_kcy,_kr);
+                _grd.addColorStop(0,`rgba(255,20,0,${(_kgP*1.4).toFixed(3)})`);
+                _grd.addColorStop(0.5,`rgba(255,0,0,${_kgP.toFixed(3)})`);
+                _grd.addColorStop(1,'rgba(255,0,0,0)');
+                ctx.fillStyle=_grd;ctx.fillRect(_kh.x-_kh.w*0.8,_kh.y-_kh.h*0.8,_kh.w*2.6,_kh.h*2.6);
+            }}
             for(let i=0;i<TILE_GRID_HEIGHT;i++)
                 for(let j=0;j<TILE_GRID_WIDTH;j++)
                     tiles[i][j].render(ctx,sheet,false);
@@ -4595,6 +4696,7 @@ Promise.all([
                 p.vx*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 p.vy*=Math.pow(p.ice||p.wall||p.kill?0.80:p.finish?0.88:p.smoke?0.90:0.85,dt);
                 const sx=p.wx-player.xPos,sy=p.wy-player.yPos;
+                if(!showParticles) continue;
                 ctx.save();
                 if(p.ice||p.wall||p.kill||p.finish){
                     ctx.globalAlpha=Math.pow(1-t,1.5)*0.95;
@@ -4604,7 +4706,6 @@ Promise.all([
                     let r,g,b;
                     if(p.finish){r=p.r;g=p.g;b=p.b;}
                     else if(p.wall){r=Math.floor(140+br*80);g=Math.floor(135+br*75);b=Math.floor(125+br*65);}
-                    else if(p.kill){r=255;g=Math.floor(30+br*80);b=0;}
                     else if(p.grass){r=Math.floor(30+br*90);g=Math.floor(130+br*110);b=Math.floor(20+br*50);}
                     else{r=Math.floor((15+br*195)*(1-t*0.3));g=Math.floor((60+br*170)*(1-t*0.1));b=255;}
                     ctx.fillStyle=`rgb(${r},${g},${b})`;
@@ -4716,7 +4817,6 @@ Promise.all([
             const _lnow2=performance.now();
             const _lCurSpd=Math.sqrt(player.xVel*player.xVel+player.yVel*player.yVel);
             const _lSpdFade=Math.max(0,Math.min(1,(_lCurSpd-18)/6));
-            if(!adminFullInvisibility) {
             for(const g of ghostTrail){
                 const _dx=g.wx-player.xPos,_dy=g.wy-player.yPos;
                 if(_dx*_dx+_dy*_dy<28*28) continue;
@@ -4731,9 +4831,8 @@ Promise.all([
                 ctx.drawImage(carImg,_lsk.sx,0,_lsk.sw,SKIN_H,-_lrW/2,-_lrH/2,_lrW,_lrH);
                 ctx.restore();
             }}
-            }
             // Second chance golden aura (lobby local player)
-            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd && !adminFullInvisibility){
+            if(secondChanceImmune&&performance.now()<secondChanceImmunityEnd){
                 const _lsNow=performance.now();
                 const _lscEl=_lsNow-(secondChanceImmunityEnd-secondChanceImmunityTotal);
                 const _lscRem=secondChanceImmunityEnd-_lsNow;
@@ -4748,7 +4847,7 @@ Promise.all([
                 ctx.restore();
             }
             // Speed tile aura (lobby local player)
-            if(performance.now()<speedTileEnd && !adminFullInvisibility){
+            if(performance.now()<speedTileEnd){
                 const _lsn=performance.now(),_lsel=_lsn-speedGlowStart,_lsrem=speedTileEnd-_lsn;
                 const _lsfa=Math.min(1,_lsel/300)*Math.min(1,_lsrem/300);
                 ctx.save();
@@ -4762,6 +4861,14 @@ Promise.all([
             }
             player.render(ctx,carImg,false);
             ctx.restore();
+            if(showEdgeGlow&&levelHasKillBlocks){
+                const _akNow=performance.now(),_akP=0.18+Math.sin(_akNow*0.003)*0.05;
+                const _akGrd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,0,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.75);
+                _akGrd.addColorStop(0,'rgba(255,0,0,0)');
+                _akGrd.addColorStop(0.5,`rgba(255,0,0,${(_akP*0.4).toFixed(3)})`);
+                _akGrd.addColorStop(1,`rgba(255,0,0,${_akP.toFixed(3)})`);
+                ctx.fillStyle=_akGrd;ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
+            }
 
             if(mobileControls&&boostUnlocked){
                 const mb=getMobBoostRect();
@@ -4776,7 +4883,7 @@ Promise.all([
             }
 
             // Self username label
-            if(currentUsername && !adminFullInvisibility){
+            if(currentUsername){
                 const nm=currentUsername.toUpperCase();
                 const nw=nm.length*(4*3+3),padX=8,padY=5;
                 const lx=Math.floor(SCREEN_WM-nw/2-padX),ly=Math.floor(SCREEN_HM-CAR_HEIGHT/2-10-7*3-padY*2-6);
@@ -4821,7 +4928,7 @@ Promise.all([
                 else hudSpriteL(ny,3,cdStateL(secondChanceCooldownEnd,secondChanceTotalDuration));
             }}
             // Speed tile glow
-            {const _now=performance.now();if(_now<speedTileEnd){
+            if(showEdgeGlow){const _now=performance.now();if(_now<speedTileEnd){
                 const _el=_now-speedGlowStart,_rem=speedTileEnd-_now;
                 const _fa=Math.min(1,Math.min(_el/300,_rem/300));
                 const grd=ctx.createRadialGradient(SCREEN_WM,SCREEN_HM,Math.min(SCREEN_WIDTH,SCREEN_HEIGHT)*0.15,SCREEN_WM,SCREEN_HM,Math.max(SCREEN_WIDTH,SCREEN_HEIGHT)*0.75);
