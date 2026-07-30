@@ -537,10 +537,55 @@ const LEVEL_5=[
 [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
-const LEVEL_START_X=[3300,-1200,-1200,-1236,-1100];
-const LEVEL_START_Y=[4100,-500,4100,3998,4100];
-const LEVEL_BACKGROUND=[1,1,2,2,2];
-const LEVEL_MAPS=[LEVEL_1,LEVEL_2,LEVEL_3,LEVEL_4,LEVEL_5];
+const LEVEL_6=(()=>{
+    const map=Array.from({length:TILE_GRID_HEIGHT},()=>new Array(TILE_GRID_WIDTH).fill(0));
+    const path=[
+        [12,95],[12,80],[13,76],[16,73],[21,70],[80,70],
+        [85,68],[88,65],[90,61],[90,58],[88,54],[84,51],[79,50],[20,50],
+        [15,48],[12,45],[10,41],[10,38],[12,34],[16,31],[21,30],[80,30],
+        [85,28],[88,25],[90,21],[90,18],[88,14],[84,11],[79,10],[20,10]
+    ];
+    const segmentDistance=(x,y,a,b)=>{
+        const dx=b[0]-a[0],dy=b[1]-a[1];
+        const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy)));
+        return Math.hypot(x-(a[0]+t*dx),y-(a[1]+t*dy));
+    };
+    for(let y=0;y<TILE_GRID_HEIGHT;y++){
+        for(let x=0;x<TILE_GRID_WIDTH;x++){
+            let distance=Infinity;
+            for(let i=0;i<path.length-1;i++)
+                distance=Math.min(distance,segmentDistance(x,y,path[i],path[i+1]));
+            if(distance<=5.2) map[y][x]=2;
+            else if(distance<=6.5) map[y][x]=1;
+        }
+    }
+    const paint=(x0,x1,y0,y1,type,iceOnly=false)=>{
+        for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++)
+            if(!iceOnly||map[y][x]===2) map[y][x]=type;
+    };
+    paint(7,17,88,88,5);
+    paint(22,22,5,15,4);
+    paint(78,78,66,74,13,true);
+    paint(20,20,46,54,13,true);
+    paint(78,78,26,34,13,true);
+    paint(72,72,6,14,13,true);
+    paint(9,15,82,86,8,true);
+    paint(23,29,68,72,11,true);
+    paint(71,77,48,52,9,true);
+    paint(23,29,28,32,11,true);
+    paint(65,71,8,12,9,true);
+    for(const obstacle of [
+        [39,41,65,68],[58,60,72,75],
+        [64,66,45,48],[45,47,52,55],[28,30,45,48],
+        [35,37,25,28],[54,56,32,35],[70,72,25,28]
+    ]) paint(...obstacle,6,true);
+    return map;
+})();
+
+const LEVEL_START_X=[3300,-1200,-1200,-1236,-1100,-930];
+const LEVEL_START_Y=[4100,-500,4100,3998,4100,4100];
+const LEVEL_BACKGROUND=[1,1,2,2,2,2];
+const LEVEL_MAPS=[LEVEL_1,LEVEL_2,LEVEL_3,LEVEL_4,LEVEL_5,LEVEL_6];
 const LEVEL_LOBBY=[
 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
@@ -669,7 +714,7 @@ let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
-let levelRecords=new Array(4).fill(null); // {username, time} per level
+let levelRecords=new Array(LEVEL_MAPS.length).fill(null); // {username, time} per level
 let deleteConfirm=false;
 let activeInput=null; // 'username'|'password'
 const inputValues={username:'',password:'',confirmPw:''};
@@ -1320,7 +1365,7 @@ class Car {
                     checkRaceEnd();
                 }
                 if(!antiCheatFlagged&&page!=='RACE_GAME'){
-                const dcRewards=[1,5,10,20,100];
+                const dcRewards=[1,5,10,20,100,200];
                 driftCoins+=dcRewards[currentLevel]||0;
                 dbSaveProfile();
                 dbSaveTime(currentLevel,finishTime);
@@ -1985,7 +2030,7 @@ async function dbSaveTime(level,time){
     await db.from('times').upsert({user_id:currentUser.id,username:currentUsername,level,time},{onConflict:'user_id,level'});
 }
 async function dbLoadRecords(){
-    for(let i=0;i<5;i++){
+    for(let i=0;i<LEVEL_MAPS.length;i++){
         const{data}=await db.from('times').select('username,time').eq('level',i)
             .order('time',{ascending:true}).limit(1).maybeSingle();
         levelRecords[i]=data&&!isPrivileged(data.username)?data:null;
@@ -2082,7 +2127,7 @@ function joinRaceQueueChannel(){
             if(allUids.length>=2&&allUids[0]===currentUser.id){
                 const targetUid=allUids[1];
                 _raceProposed=targetUid;
-                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*5);
+                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
                 raceQueueChannel.send({type:'broadcast',event:'match_propose',payload:{fromUid:currentUser.id,fromUsername:currentUsername,fromDc:driftCoins,fromTp:totalTalentPoints,fromSkin:selectedSkin,toUid:targetUid,sessionId:raceSessionId,map:raceMap}});
             }
         })
@@ -2121,7 +2166,7 @@ function leaveRaceChallengeChannel(){
 function sendRaceChallenge(){
     if(!raceChallengeChannel||!raceChallengeInput.trim()){return;}
     if(raceChallengeInput.trim().toLowerCase()===currentUsername.toLowerCase()){raceChallengeError='CANNOT CHALLENGE YOURSELF';return;}
-    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*5);
+    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
     raceChallengeChannel.send({type:'broadcast',event:'challenge',payload:{fromUid:currentUser.id,fromUsername:currentUsername,toUsername:raceChallengeInput.trim().toLowerCase(),sessionId:raceSessionId,map:raceMap,fromDc:driftCoins,fromTp:totalTalentPoints}});
     raceChallengeError='';raceState='challenge_wait';
 }
@@ -2951,7 +2996,7 @@ Promise.all([
         return {bx:Math.floor(SCREEN_WM-START_BUTTON_WIDTH/2),by:Math.floor(SCREEN_HM-START_BUTTON_HEIGHT/2),bw:START_BUTTON_WIDTH,bh:START_BUTTON_HEIGHT};
     }
     function getLevelBtn(i){
-        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=5;
+        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=LEVEL_MAPS.length;
         const lx=Math.floor(SCREEN_WM-(n*step-gap)/2+size/2+i*step);
         return {bx:lx-size/2,by:Math.floor(SCREEN_HM-size/2),bw:size,bh:size};
     }
@@ -3247,7 +3292,7 @@ Promise.all([
 
         } else if(page==='LEVEL_SELECT'){
             menuBg.update(dt);
-            for(let i=0;i<5;i++){
+            for(let i=0;i<LEVEL_MAPS.length;i++){
                 const lb=getLevelBtn(i);
                 if(mjp&&inRect(mouseX,mouseY,lb.bx,lb.by,lb.bw,lb.bh)){
                     currentLevel=i;
@@ -3261,7 +3306,7 @@ Promise.all([
             if(mjp&&inRect(mouseX,mouseY,lsBb.bx,lsBb.by,lsBb.bw,lsBb.bh)) page='LEVELS';
             ctx.fillStyle='#000';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             menuBg.render(ctx,sheet);
-            for(let i=0;i<5;i++){
+            for(let i=0;i<LEVEL_MAPS.length;i++){
                 const lb=getLevelBtn(i);
                 renderButton(ctx,btnSheet,textSheet,2,lb.bx,lb.by,lb.bw,lb.bh,String(i+1));
             }
@@ -3431,10 +3476,10 @@ Promise.all([
 
             // Level tabs
             const tabGap=10,tabH=80,tabY=10;
-            const tabW=Math.floor((SCREEN_WIDTH-60-4*tabGap)/5);
-            const tabsTotal=5*tabW+4*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
-            const levelNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5'];
-            for(let i=0;i<5;i++){
+            const tabW=Math.floor((SCREEN_WIDTH-60-(LEVEL_MAPS.length-1)*tabGap)/LEVEL_MAPS.length);
+            const tabsTotal=LEVEL_MAPS.length*tabW+(LEVEL_MAPS.length-1)*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
+            const levelNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5','MAP 6'];
+            for(let i=0;i<LEVEL_MAPS.length;i++){
                 const tx=tabsX+i*(tabW+tabGap),ty=tabY;
                 const active=lbLevel===i;
                 renderTextButton(ctx,active?btnSheet:greySheet,textSheet,0,tx,ty,tabW,levelNames[i],0,0,0);
@@ -3696,7 +3741,7 @@ Promise.all([
                 const _maNow=performance.now();
                 const _dur=2800;
                 const _t=Math.min(1,(_maNow-raceMapAnimStart)/_dur);
-                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5'];
+                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5','MAP 6'];
                 const _ease=1-Math.pow(1-_t,3);
                 const _scrollPos=(raceMap-7)+7*_ease;
                 const _cardW=500,BTN_H=80,_gap=20,_step=BTN_H+_gap;
@@ -3711,7 +3756,7 @@ Promise.all([
                 ctx.save();ctx.globalAlpha=0.78;ctx.fillStyle='rgb(5,8,22)';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);ctx.restore();
                 ctx.save();ctx.beginPath();ctx.rect(0,SCREEN_HM-_step*2-10,SCREEN_WIDTH,_step*4+20);ctx.clip();
                 for(let _ci=-4;_ci<=4;_ci++){
-                    const _idx=((Math.round(_scrollPos)+_ci)%5+5)%5;
+                    const _idx=((Math.round(_scrollPos)+_ci)%LEVEL_MAPS.length+LEVEL_MAPS.length)%LEVEL_MAPS.length;
                     const _offY=(_ci+(Math.round(_scrollPos)-_scrollPos))*_step;
                     const _cy=SCREEN_HM+_offY;
                     const _dist=Math.abs(_offY/_step);
