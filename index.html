@@ -637,13 +637,14 @@ const LEVEL_6=[
 [0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 [0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 [0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
 const LEVEL_START_X=[3300,-1200,-1200,-1236,-1100,-930];
 const LEVEL_START_Y=[4100,-500,4100,3998,4100,4100];
-const LEVEL_BACKGROUND=[1,1,2,2,2,2];
+const LEVEL_BACKGROUND=[1,1,2,2,2,1];
 const LEVEL_MAPS=[LEVEL_1,LEVEL_2,LEVEL_3,LEVEL_4,LEVEL_5,LEVEL_6];
+const NORMAL_LEVEL_COUNT=5,BONUS_LEVEL_INDEX=5,BONUS_REWARD=1000,BONUS_ATTEMPT_TIME=999999999;
 const LEVEL_LOBBY=[
 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
@@ -772,7 +773,9 @@ let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
 let settingsTab=0;
 let upScroll=0;
 let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
-let levelRecords=new Array(LEVEL_MAPS.length).fill(null); // {username, time} per level
+let levelRecords=new Array(NORMAL_LEVEL_COUNT).fill(null); // {username, time} per normal level
+let completedLevels=new Array(NORMAL_LEVEL_COUNT).fill(false);
+let bonusPlayed=false,bonusRunActive=false;
 let deleteConfirm=false;
 let activeInput=null; // 'username'|'password'
 const inputValues={username:'',password:'',confirmPw:''};
@@ -1423,10 +1426,18 @@ class Car {
                     checkRaceEnd();
                 }
                 if(!antiCheatFlagged&&page!=='RACE_GAME'){
-                const dcRewards=[1,5,10,20,100,200];
-                driftCoins+=dcRewards[currentLevel]||0;
-                dbSaveProfile();
-                dbSaveTime(currentLevel,finishTime);
+                if(currentLevel===BONUS_LEVEL_INDEX&&bonusRunActive){
+                    driftCoins+=BONUS_REWARD;
+                    bonusRunActive=false;
+                    dbSaveProfile();
+                    dbSaveTime(currentLevel,finishTime);
+                }else if(currentLevel<NORMAL_LEVEL_COUNT){
+                    const dcRewards=[1,5,10,20,100];
+                    driftCoins+=dcRewards[currentLevel]||0;
+                    completedLevels[currentLevel]=true;
+                    dbSaveProfile();
+                    dbSaveTime(currentLevel,finishTime);
+                }
                 }
             }
         }
@@ -2087,8 +2098,31 @@ async function dbSaveTime(level,time){
     if(existing&&existing.time<=time)return;
     await db.from('times').upsert({user_id:currentUser.id,username:currentUsername,level,time},{onConflict:'user_id,level'});
 }
+async function dbLoadLevelProgress(){
+    completedLevels=new Array(NORMAL_LEVEL_COUNT).fill(false);
+    bonusPlayed=!!(currentUser&&localStorage.getItem('icedrift_bonus_played_'+currentUser.id)==='1');
+    bonusRunActive=false;
+    if(!currentUser)return;
+    const{data,error}=await db.from('times').select('level').eq('user_id',currentUser.id);
+    if(error){console.error('[progress]',error.message);return;}
+    for(const row of data||[]){
+        if(row.level>=0&&row.level<NORMAL_LEVEL_COUNT) completedLevels[row.level]=true;
+        if(row.level===BONUS_LEVEL_INDEX) bonusPlayed=true;
+    }
+}
+async function dbMarkBonusPlayed(){
+    if(!currentUser)return;
+    localStorage.setItem('icedrift_bonus_played_'+currentUser.id,'1');
+    const{error}=await db.from('times').upsert({
+        user_id:currentUser.id,username:currentUsername,level:BONUS_LEVEL_INDEX,time:BONUS_ATTEMPT_TIME
+    },{onConflict:'user_id,level'});
+    if(error)console.error('[bonus]',error.message);
+}
+function bonusLevelAvailable(){
+    return !bonusPlayed&&completedLevels.every(Boolean);
+}
 async function dbLoadRecords(){
-    for(let i=0;i<LEVEL_MAPS.length;i++){
+    for(let i=0;i<NORMAL_LEVEL_COUNT;i++){
         const{data}=await db.from('times').select('username,time').eq('level',i)
             .order('time',{ascending:true}).limit(1).maybeSingle();
         levelRecords[i]=data&&!isPrivileged(data.username)?data:null;
@@ -2099,6 +2133,7 @@ async function dbDeleteAccount(){
     await db.rpc('delete_account');
     leaveChatChannel();leaveLobbyChannel();leaveRaceChallengeChannel();unsubscribeFromProfile();
     currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
+    completedLevels=new Array(NORMAL_LEVEL_COUNT).fill(false);bonusPlayed=false;bonusRunActive=false;
     talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
     inputValues.username='';inputValues.password='';deleteConfirm=false;
     page='MENU';
@@ -2185,7 +2220,7 @@ function joinRaceQueueChannel(){
             if(allUids.length>=2&&allUids[0]===currentUser.id){
                 const targetUid=allUids[1];
                 _raceProposed=targetUid;
-                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
+                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*NORMAL_LEVEL_COUNT);
                 raceQueueChannel.send({type:'broadcast',event:'match_propose',payload:{fromUid:currentUser.id,fromUsername:currentUsername,fromDc:driftCoins,fromTp:totalTalentPoints,fromSkin:selectedSkin,toUid:targetUid,sessionId:raceSessionId,map:raceMap}});
             }
         })
@@ -2224,7 +2259,7 @@ function leaveRaceChallengeChannel(){
 function sendRaceChallenge(){
     if(!raceChallengeChannel||!raceChallengeInput.trim()){return;}
     if(raceChallengeInput.trim().toLowerCase()===currentUsername.toLowerCase()){raceChallengeError='CANNOT CHALLENGE YOURSELF';return;}
-    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
+    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*NORMAL_LEVEL_COUNT);
     raceChallengeChannel.send({type:'broadcast',event:'challenge',payload:{fromUid:currentUser.id,fromUsername:currentUsername,toUsername:raceChallengeInput.trim().toLowerCase(),sessionId:raceSessionId,map:raceMap,fromDc:driftCoins,fromTp:totalTalentPoints}});
     raceChallengeError='';raceState='challenge_wait';
 }
@@ -2473,6 +2508,7 @@ async function dbSignUp(username,password){
         });
         if(ins.error){authLoading=false;authError='DB error: '+ins.error.message;return;}
         currentUser=data.user;currentUsername=username;
+        completedLevels=new Array(NORMAL_LEVEL_COUNT).fill(false);bonusPlayed=false;bonusRunActive=false;
         authLoading=false;showPassword=false;
         page='LEVELS';dbLoadRecords();joinChatChannel();subscribeToProfile();joinRaceChallengeChannel();
     }catch(e){authLoading=false;authError='Error: '+e.message;}
@@ -2484,6 +2520,7 @@ async function dbSignIn(username,password){
         if(error){authLoading=false;authError='Invalid username or password';return;}
         currentUser=data.user;
         await dbLoadProfile(data.user.id);
+        await dbLoadLevelProgress();
         authLoading=false;showPassword=false;
         page='LEVELS';dbLoadRecords();joinChatChannel();subscribeToProfile();joinRaceChallengeChannel();
     }catch(e){authLoading=false;authError='Error: '+e.message;}
@@ -2495,6 +2532,7 @@ async function dbSignIn(username,password){
     if(session?.user){
         currentUser=session.user;
         await dbLoadProfile(session.user.id);
+        await dbLoadLevelProgress();
         dbLoadRecords();
         page='LEVELS';joinChatChannel();subscribeToProfile();joinRaceChallengeChannel();
     }
@@ -3054,9 +3092,13 @@ Promise.all([
         return {bx:Math.floor(SCREEN_WM-START_BUTTON_WIDTH/2),by:Math.floor(SCREEN_HM-START_BUTTON_HEIGHT/2),bw:START_BUTTON_WIDTH,bh:START_BUTTON_HEIGHT};
     }
     function getLevelBtn(i){
-        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=LEVEL_MAPS.length;
+        const size=LEVEL_BUTTON_SIZE,gap=LEVEL_BUTTON_GAP,step=size+gap,n=NORMAL_LEVEL_COUNT;
         const lx=Math.floor(SCREEN_WM-(n*step-gap)/2+size/2+i*step);
         return {bx:lx-size/2,by:Math.floor(SCREEN_HM-size/2),bw:size,bh:size};
+    }
+    function getBonusLevelBtn(){
+        const bw=320,bh=80;
+        return {bx:Math.floor(SCREEN_WM-bw/2),by:Math.floor(SCREEN_HM+LEVEL_BUTTON_SIZE/2+LEVEL_BUTTON_GAP),bw,bh};
     }
     function getTalentBtn(){
         return {bx:30,by:SCREEN_HEIGHT-130,bw:LEVEL_BUTTON_SIZE,bh:LEVEL_BUTTON_SIZE};
@@ -3350,7 +3392,7 @@ Promise.all([
 
         } else if(page==='LEVEL_SELECT'){
             menuBg.update(dt);
-            for(let i=0;i<LEVEL_MAPS.length;i++){
+            for(let i=0;i<NORMAL_LEVEL_COUNT;i++){
                 const lb=getLevelBtn(i);
                 if(mjp&&inRect(mouseX,mouseY,lb.bx,lb.by,lb.bw,lb.bh)){
                     currentLevel=i;
@@ -3360,13 +3402,28 @@ Promise.all([
                     page='GAME';
                 }
             }
+            const bonusAvailable=bonusLevelAvailable(),bonusBb=getBonusLevelBtn();
+            if(bonusAvailable&&mjp&&inRect(mouseX,mouseY,bonusBb.bx,bonusBb.by,bonusBb.bw,bonusBb.bh)){
+                bonusPlayed=true;bonusRunActive=true;
+                dbMarkBonusPlayed();
+                currentLevel=BONUS_LEVEL_INDEX;
+                INITIAL_CAR_X=(1600-SCREEN_WM)-Math.floor(CAR_WIDTH/2)+LEVEL_START_X[currentLevel];
+                INITIAL_CAR_Y=(900-SCREEN_HM)-Math.floor(CAR_HEIGHT/2)+LEVEL_START_Y[currentLevel];
+                levelLoaded=false;
+                page='GAME';
+            }
             const lsBb=getBackBtn();
             if(mjp&&inRect(mouseX,mouseY,lsBb.bx,lsBb.by,lsBb.bw,lsBb.bh)) page='LEVELS';
             ctx.fillStyle='#000';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
             menuBg.render(ctx,sheet);
-            for(let i=0;i<LEVEL_MAPS.length;i++){
+            for(let i=0;i<NORMAL_LEVEL_COUNT;i++){
                 const lb=getLevelBtn(i);
                 renderButton(ctx,btnSheet,textSheet,2,lb.bx,lb.by,lb.bw,lb.bh,String(i+1));
+            }
+            if(bonusAvailable){
+                renderTextButton(ctx,btnSheet,textSheet,0,bonusBb.bx,bonusBb.by,bonusBb.bw,'BONUS MAP',180,80,0);
+                const bonusHint='ONE ATTEMPT - 1000 DC',bonusHintW=bonusHint.length*(4*3+3);
+                renderText(ctx,textSheet,bonusHint,Math.floor(SCREEN_WM-bonusHintW/2),bonusBb.by+bonusBb.bh+10,1,255,220,80);
             }
             renderButton(ctx,btnSheet,textSheet,4,lsBb.bx,lsBb.by,lsBb.bw,lsBb.bh,'');
             renderDriftCoins(ctx,textSheet,iconsImg);
@@ -3534,10 +3591,10 @@ Promise.all([
 
             // Level tabs
             const tabGap=10,tabH=80,tabY=10;
-            const tabW=Math.floor((SCREEN_WIDTH-60-(LEVEL_MAPS.length-1)*tabGap)/LEVEL_MAPS.length);
-            const tabsTotal=LEVEL_MAPS.length*tabW+(LEVEL_MAPS.length-1)*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
-            const levelNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5','MAP 6'];
-            for(let i=0;i<LEVEL_MAPS.length;i++){
+            const tabW=Math.floor((SCREEN_WIDTH-60-(NORMAL_LEVEL_COUNT-1)*tabGap)/NORMAL_LEVEL_COUNT);
+            const tabsTotal=NORMAL_LEVEL_COUNT*tabW+(NORMAL_LEVEL_COUNT-1)*tabGap,tabsX=Math.floor(SCREEN_WM-tabsTotal/2);
+            const levelNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5'];
+            for(let i=0;i<NORMAL_LEVEL_COUNT;i++){
                 const tx=tabsX+i*(tabW+tabGap),ty=tabY;
                 const active=lbLevel===i;
                 renderTextButton(ctx,active?btnSheet:greySheet,textSheet,0,tx,ty,tabW,levelNames[i],0,0,0);
@@ -3690,6 +3747,7 @@ Promise.all([
                                 db.auth.signOut();
                                 leaveChatChannel();leaveLobbyChannel();leaveRaceChallengeChannel();unsubscribeFromProfile();
                                 currentUser=null;currentUsername='';driftCoins=0;totalTalentPoints=0;spentTalentPoints=0;
+                                completedLevels=new Array(NORMAL_LEVEL_COUNT).fill(false);bonusPlayed=false;bonusRunActive=false;
                                 talentPurchased=new Array(TALENT_COUNT).fill(false);talentRecomputeEffects();
                                 inputValues.username='';inputValues.password='';deleteConfirm=false;setChatActive(false);page='MENU';
                             })();
@@ -3799,7 +3857,7 @@ Promise.all([
                 const _maNow=performance.now();
                 const _dur=2800;
                 const _t=Math.min(1,(_maNow-raceMapAnimStart)/_dur);
-                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5','MAP 6'];
+                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5'];
                 const _ease=1-Math.pow(1-_t,3);
                 const _scrollPos=(raceMap-7)+7*_ease;
                 const _cardW=500,BTN_H=80,_gap=20,_step=BTN_H+_gap;
@@ -3814,7 +3872,7 @@ Promise.all([
                 ctx.save();ctx.globalAlpha=0.78;ctx.fillStyle='rgb(5,8,22)';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);ctx.restore();
                 ctx.save();ctx.beginPath();ctx.rect(0,SCREEN_HM-_step*2-10,SCREEN_WIDTH,_step*4+20);ctx.clip();
                 for(let _ci=-4;_ci<=4;_ci++){
-                    const _idx=((Math.round(_scrollPos)+_ci)%LEVEL_MAPS.length+LEVEL_MAPS.length)%LEVEL_MAPS.length;
+                    const _idx=((Math.round(_scrollPos)+_ci)%NORMAL_LEVEL_COUNT+NORMAL_LEVEL_COUNT)%NORMAL_LEVEL_COUNT;
                     const _offY=(_ci+(Math.round(_scrollPos)-_scrollPos))*_step;
                     const _cy=SCREEN_HM+_offY;
                     const _dist=Math.abs(_offY/_step);
@@ -3989,7 +4047,7 @@ Promise.all([
             const gameBb=getBackBtn();
             if(mjp&&inRect(mouseX,mouseY,gameBb.bx,gameBb.by,gameBb.bw,gameBb.bh)){
                 if(page==='RACE_GAME'){raceChannel?.send({type:'broadcast',event:'forfeit',payload:{uid:currentUser?.id}});applyRaceResult(false);}
-                else page='LEVEL_SELECT';
+                else{bonusRunActive=false;page='LEVEL_SELECT';}
             }
 
             const prevPX=player.xPos+SCREEN_WM,prevPY=player.yPos+SCREEN_HM;
@@ -4498,6 +4556,7 @@ Promise.all([
                 renderText(ctx,textSheet,text,SCREEN_WM-tw/2,(SCREEN_HM-th/2)-SCREEN_HM/2,size);
                 if(performance.now()-finishTick>=3000){
                     page='LEVEL_SELECT';
+                    bonusRunActive=false;
                     finish=false;
                 }
             }
@@ -5137,7 +5196,7 @@ Promise.all([
             const bb=getBackBtn();
             renderButton(ctx,btnSheet,textSheet,4,bb.bx,bb.by,bb.bw,bb.bh,'');
             if(mjp&&inRect(mouseX,mouseY,bb.bx,bb.by,bb.bw,bb.bh)){
-                antiCheatFlagged=false;shiftPressLog=[];page='LEVEL_SELECT';
+                antiCheatFlagged=false;shiftPressLog=[];bonusRunActive=false;page='LEVEL_SELECT';
             }
         }
 
