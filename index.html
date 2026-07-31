@@ -2119,7 +2119,7 @@ async function dbMarkBonusPlayed(){
     if(error)console.error('[bonus]',error.message);
 }
 function bonusLevelAvailable(){
-    return !bonusPlayed&&completedLevels.every(Boolean);
+    return isAdmin(currentUsername)||(!bonusPlayed&&completedLevels.every(Boolean));
 }
 async function dbLoadRecords(){
     for(let i=0;i<NORMAL_LEVEL_COUNT;i++){
@@ -2220,7 +2220,7 @@ function joinRaceQueueChannel(){
             if(allUids.length>=2&&allUids[0]===currentUser.id){
                 const targetUid=allUids[1];
                 _raceProposed=targetUid;
-                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*NORMAL_LEVEL_COUNT);
+                raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
                 raceQueueChannel.send({type:'broadcast',event:'match_propose',payload:{fromUid:currentUser.id,fromUsername:currentUsername,fromDc:driftCoins,fromTp:totalTalentPoints,fromSkin:selectedSkin,toUid:targetUid,sessionId:raceSessionId,map:raceMap}});
             }
         })
@@ -2259,7 +2259,7 @@ function leaveRaceChallengeChannel(){
 function sendRaceChallenge(){
     if(!raceChallengeChannel||!raceChallengeInput.trim()){return;}
     if(raceChallengeInput.trim().toLowerCase()===currentUsername.toLowerCase()){raceChallengeError='CANNOT CHALLENGE YOURSELF';return;}
-    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*NORMAL_LEVEL_COUNT);
+    raceSessionId=raceGenId();raceMap=Math.floor(Math.random()*LEVEL_MAPS.length);
     raceChallengeChannel.send({type:'broadcast',event:'challenge',payload:{fromUid:currentUser.id,fromUsername:currentUsername,toUsername:raceChallengeInput.trim().toLowerCase(),sessionId:raceSessionId,map:raceMap,fromDc:driftCoins,fromTp:totalTalentPoints}});
     raceChallengeError='';raceState='challenge_wait';
 }
@@ -3857,7 +3857,7 @@ Promise.all([
                 const _maNow=performance.now();
                 const _dur=2800;
                 const _t=Math.min(1,(_maNow-raceMapAnimStart)/_dur);
-                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5'];
+                const mapNames=['MAP 1','MAP 2','MAP 3','MAP 4','MAP 5','BONUS MAP'];
                 const _ease=1-Math.pow(1-_t,3);
                 const _scrollPos=(raceMap-7)+7*_ease;
                 const _cardW=500,BTN_H=80,_gap=20,_step=BTN_H+_gap;
@@ -3872,7 +3872,7 @@ Promise.all([
                 ctx.save();ctx.globalAlpha=0.78;ctx.fillStyle='rgb(5,8,22)';ctx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);ctx.restore();
                 ctx.save();ctx.beginPath();ctx.rect(0,SCREEN_HM-_step*2-10,SCREEN_WIDTH,_step*4+20);ctx.clip();
                 for(let _ci=-4;_ci<=4;_ci++){
-                    const _idx=((Math.round(_scrollPos)+_ci)%NORMAL_LEVEL_COUNT+NORMAL_LEVEL_COUNT)%NORMAL_LEVEL_COUNT;
+                    const _idx=((Math.round(_scrollPos)+_ci)%LEVEL_MAPS.length+LEVEL_MAPS.length)%LEVEL_MAPS.length;
                     const _offY=(_ci+(Math.round(_scrollPos)-_scrollPos))*_step;
                     const _cy=SCREEN_HM+_offY;
                     const _dist=Math.abs(_offY/_step);
