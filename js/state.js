@@ -1,0 +1,111 @@
+// Texture assets (assigned in game.js after load)
+let sheet, carImg, titleImg, textSheet, btnSheet, cdSheet, iconsImg;
+// Derived sprite sheets (built from loaded textures)
+let greySheet, tintSheet, redTintSheet, bwBtnSheet, redBtnSheet, cdImmuneSheet;
+// Game objects (created in game.js after asset load)
+let tiles, player, bg, menuBg;
+
+let page='MENU';
+let currentLevel=0,levelLoaded=false;
+let mouseDown=false,mouseJustPressed=false,mouseJustReleased=false;
+let rightMouseDown=false,rightMouseJustPressed=false;
+let editorGrid=null,editorSpawnRow=null,editorSpawnCol=null;
+let editorBackground=1,editorSelectedTile=2;
+let editorCamX=0,editorCamY=0,editorZoom=9;
+let editorPanning=false,editorPanStartX=0,editorPanStartY=0,editorPanCamX=0,editorPanCamY=0;
+let editorPaintValue=0,editorFromEditorPlay=false;
+let editorDrawMode='draw',editorLineStartRow=null,editorLineStartCol=null;
+let editorKeyLeft=false,editorKeyRight=false,editorKeyUp=false,editorKeyDown=false;
+let editorPalScroll=0;
+let editorLevelName='',editorLevelId=null,editorPublishing=false,editorLevelPublished=false;
+let editorUndoStack=[],editorRedoStack=[];
+let customLevelsTab='community',myLevels=[],myLevelsLoaded=false,myLevelsScroll=0;
+let communityLevels=[],communityLevelsLoaded=false,communityLevelsScroll=0;
+let selectedCustomLevel=null,selectedCustomLevelPB=undefined,playingCommunityLevel=false;
+let contextMenu=null,editorLastPaintRow=null,editorLastPaintCol=null;
+let shiftJustPressed=false,shiftWasDown=false;
+let mobileControls=localStorage.getItem('mobileControls')==='1';
+let showParticles=localStorage.getItem('icedrift_particles')!=='0';
+let showScreenShake=localStorage.getItem('icedrift_screenshake')!=='0';
+let showEdgeGlow=localStorage.getItem('icedrift_edgeglow')!=='0';
+let aimTouchId=null,boostTouchId=null;
+let showHitboxes=false;
+// Auth state
+const DEVELOPERS=['nachofrenchfry'];
+const ADMINS=['cookery'];
+const BANNED_LB=['h4ck3r'];
+let currentUser=null,currentUsername='';
+let authLoading=false,authError='',authSubmitPending=false;
+let lbLevel=0,lbScroll=0,lbRows=[],lbLoading=false;
+let settingsTab=0;
+let upScroll=0;
+let scrollTouchId=null,scrollTouchStartY=0,scrollTouchStartVal=0,scrollTouchDragging=false;
+let levelRecords=new Array(4).fill(null); // {username, time} per level
+let deleteConfirm=false;
+let activeInput=null; // 'username'|'password'
+const inputValues={username:'',password:'',confirmPw:'',levelName:''};
+let showPassword=false,cpShowPw=[false,false,false];
+let authFieldRects={un:null,pw:null};
+let caretPos=0;
+let mouseX,mouseY;
+let finish=false,finishTime=0,finishTick=0;
+let gameStartTime=performance.now();
+let startWallDeactivated=false;
+
+let totalTalentPoints=0,spentTalentPoints=0;
+let driftCoins=0,shopConvertAmount=1,mutedUntil=0,hasNewUpdate=false,lastUpdateSeen=null;
+let selectedSkin=parseInt(localStorage.getItem('icedrift_skin'))||0;
+let ownedSkins=(()=>{try{const o=JSON.parse(localStorage.getItem('icedrift_owned_skins'));return Array.isArray(o)?o:[0];}catch(e){return[0];}})();
+let shopTab=0;
+let talentPurchased=new Array(TALENT_COUNT).fill(false);
+let visionScale=1.0,accelerationMult=1.0,reloadCooldownMult=1.0;
+let speedTileEnd=0,speedGlowStart=0,levelHasKillBlocks=false;
+let checkpointX=null,checkpointY=null;
+let cullMarginX=0,cullMarginY=0;
+let boostUnlocked=false,boostLevel=0,boostCooldownEnd=0,boostCooldownTotal=1,boostStretchStart=-Infinity;
+let wallDampenerUnlocked=false,wallDampenerLevel=0;
+let doubleChargeUnlocked=false,doubleChargeLevel=0;
+let boostChargesMax=1,boost2ChargesLeft=0,boost2CooldownEnds=[],boost2CooldownTotals=[];
+let tacticalSightUnlocked=false,tacticalSightLevel=0;
+let turboBrakeUnlocked=false,turboBrakeLevel=0,turboBrakeCooldownEnd=0,turboBrakeCooldownTotal=1;
+let secondChanceUnlocked=false,secondChanceLevel=0;
+let holdBoostUnlocked=false;
+let evasionUnlocked=false,evasionLevel=0,evasionCooldownEnd=0,evasionDmgCheckEnd=0;
+let secondChanceImmune=false,secondChanceImmunityEnd=0,secondChanceCooldownEnd=0;
+let secondChanceTotalDuration=1,secondChanceImmunityTotal=1;
+let boostOverriding=false;
+let particles=[],iceParticleAccum=0,prevIceVelX=0,prevIceVelY=0;
+let ghostTrail=[],ghostTrailLastRecord=0;
+let _prevCursor='default',_sc2Pfx=0,_spdPfx=0,_cpPfx=0;
+let chatHistory=[],chatHistoryScroll=0,chatHistTouchId=null,chatHistTouchStartY=0,chatHistTouchStartScroll=0;
+let shopScroll=0,settingsScroll=0;
+let lobbyPfxQueue=[],_lobbyDrift=null;
+let killGlowEnd=0,killGlowStart=0,killGlowDur=600,screenShakeEnd=0,screenShakeDur=500,screenShakeMaxAmt=10;
+let countdownGoEnd=0;
+let lobbyChannel=null,otherPlayers={},lastLobbyBroadcast=0,lobbyLoaded=false;
+let raceState='menu',raceMode='random';
+let raceChannel=null,raceQueueChannel=null,raceChallengeChannel=null;
+let raceOpponent=null,raceSessionId=null,raceMap=0;
+let raceMyDcAtStart=0,raceMyTpAtStart=0;
+let raceOppX=0,raceOppY=0,raceOppDir=270,raceOppFin=false,raceOppForfeit=false,raceOppFinTime=0;
+let raceOppGhostTrail=[],raceOppLastX=0,raceOppLastY=0,raceOppLastTs=0,raceOppSpd=0;
+let raceOppDrift=null,raceOppIceAccum=0,raceOppDevPfx=0;
+let raceLocalFin=false,raceLocalFinTime=0,raceResult=null;
+let raceChallengeInput='',raceChallengeError='',raceIncoming=null;
+let duelIncoming=null,duelInput='',duelError='',duelWaitTimeout=null;
+let raceCountdownStart=0,raceLastBroadcast=0,raceStartAt=0;
+let raceMapAnimStart=0;
+let _raceProposed=null;
+let chatChannel=null,chatMessages=[],chatInput='',chatActive=false,chatCaretPos=0;
+let profileChannel=null;
+let shiftPressLog=[],antiCheatFlagged=false;
+const CHAT_MAX=20;
+// Talent tree UI state
+let talentScrollX=0,talentScrollY=0;
+let talentDragActive=false,talentIsDragging=false,talentPressStartedHere=false;
+let talentDragStartX=0,talentDragStartY=0,talentScrollBaseX=0,talentScrollBaseY=0;
+let talentHoveredId=-1,talentHoldingId=-1,talentHoldingIsDesel=false;
+let talentHoldProgress=0,talentHoldStart=0;
+// Levels were calibrated on a 1600×900 reference screen; formula compensates for any window size
+let INITIAL_CAR_X=(1600-SCREEN_WM)-Math.floor(CAR_WIDTH/2)+LEVEL_START_X[0];
+let INITIAL_CAR_Y=(900-SCREEN_HM)-Math.floor(CAR_HEIGHT/2)+LEVEL_START_Y[0];
